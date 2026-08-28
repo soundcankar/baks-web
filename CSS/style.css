@@ -406,6 +406,17 @@ article p strong { color: var(--text); }
   height: 32px;
 }
 
+@media (max-width: 480px) {
+  .audio-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .audio-row audio {
+    width: 100%;
+  }
+}
+
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
