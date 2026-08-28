@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B.A.K.S. – Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="CSS/style.css">
+    <link rel="stylesheet" href="CSS/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body class="admin-body">
+
+    <!-- LOGIN -->
+    <div id="login-view" class="login-wrap">
+        <form id="login-form" class="login-card">
+            <img src="IMG/logo.jpg" alt="Logo banda B.A.K.S." class="login-logo">
+            <h1>Admin prijava</h1>
+            <label>
+                Email
+                <input type="email" id="login-email" required autocomplete="username">
+            </label>
+            <label>
+                Geslo
+                <input type="password" id="login-password" required autocomplete="current-password">
+            </label>
+            <button type="submit" class="btn">Prijava</button>
+            <p id="login-error" class="form-error" hidden></p>
+        </form>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard-view" class="dashboard" hidden>
+        <header class="admin-header">
+            <a href="index.html" class="logo-link">
+                <img src="IMG/logo.jpg" alt="Logo banda B.A.K.S." class="logo">
+                <span class="brand">B.A.K.S. Admin</span>
+            </a>
+            <button id="logout-btn" class="btn btn-outline">Odjava</button>
+        </header>
+
+        <nav class="admin-tabs">
+            <button class="tab-btn active" data-tab="novice">Novice</button>
+            <button class="tab-btn" data-tab="posnetki">Posnetki</button>
+            <button class="tab-btn" data-tab="settings">Info o bandu</button>
+            <button class="tab-btn" data-tab="links">Povezave</button>
+            <button class="tab-btn" data-tab="gallery">Galerija</button>
+            <button class="tab-btn" data-tab="backgrounds">Ozadja</button>
+            <button class="tab-btn" data-tab="demos">Demo (člani)</button>
+        </nav>
+
+        <main class="admin-main">
+
+            <!-- NOVICE TAB -->
+            <section id="tab-novice" class="tab-panel active">
+                <h2>Dodaj / uredi novico</h2>
+                <form id="novice-form" class="admin-form">
+                    <input type="hidden" id="novice-id">
+                    <label>Naslov
+                        <input type="text" id="novice-title" required>
+                    </label>
+                    <label>Vsebina
+                        <textarea id="novice-content" rows="5" required></textarea>
+                    </label>
+                    <label>Slika (pusti prazno, da obdržiš obstoječo)
+                        <input type="file" id="novice-image" accept="image/*">
+                    </label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn">Shrani</button>
+                        <button type="button" id="novice-cancel" class="btn btn-outline" hidden>Prekliči urejanje</button>
+                    </div>
+                    <p id="novice-status" class="form-status"></p>
+                </form>
+
+                <h2>Obstoječe novice</h2>
+                <div id="novice-list" class="admin-list"></div>
+            </section>
+
+            <!-- POSNETKI TAB -->
+            <section id="tab-posnetki" class="tab-panel">
+                <h2>Dodaj / uredi posnetek</h2>
+                <form id="posnetki-form" class="admin-form">
+                    <input type="hidden" id="posnetki-id">
+                    <label>Tip
+                        <select id="posnetki-type">
+                            <option value="audio">Avdio</option>
+                            <option value="video">Video</option>
+                        </select>
+                    </label>
+                    <label id="posnetki-album-wrap">Album
+                        <input type="text" id="posnetki-album">
+                    </label>
+                    <label>Naslov
+                        <input type="text" id="posnetki-naslov" required>
+                    </label>
+                    <label>Opis
+                        <textarea id="posnetki-opis" rows="3"></textarea>
+                    </label>
+                    <label>Naloži datoteko (mp3 za avdio, mp4 za video)
+                        <input type="file" id="posnetki-file" accept="audio/*,video/*">
+                    </label>
+                    <label id="posnetki-youtube-wrap">Ali vnesi YouTube povezavo (samo za video)
+                        <input type="url" id="posnetki-youtube" placeholder="https://www.youtube.com/watch?v=...">
+                    </label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn">Shrani</button>
+                        <button type="button" id="posnetki-cancel" class="btn btn-outline" hidden>Prekliči urejanje</button>
+                    </div>
+                    <p id="posnetki-status" class="form-status"></p>
+                </form>
+
+                <h2>Obstoječi posnetki</h2>
+                <div id="posnetki-list" class="admin-list"></div>
+
+                <h2 style="margin-top:40px;">Vrstni red albumov</h2>
+                <div id="albums-order-list" class="admin-list"></div>
+            </section>
+
+            <!-- SETTINGS TAB -->
+            <section id="tab-settings" class="tab-panel">
+                <h2>Info o bandu</h2>
+                <form id="settings-form" class="admin-form">
+                    <label>Slogan (na naslovnici pod logotipom)
+                        <input type="text" id="settings-tagline">
+                    </label>
+                    <label>Opis banda
+                        <textarea id="settings-about" rows="5"></textarea>
+                    </label>
+                    <label>Člani (en član na vrstico)
+                        <textarea id="settings-members" rows="5"></textarea>
+                    </label>
+                    <label>Slika ob opisu banda (pusti prazno, da obdržiš obstoječo)
+                        <input type="file" id="settings-photo" accept="image/*">
+                    </label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn">Shrani</button>
+                    </div>
+                    <p id="settings-status" class="form-status"></p>
+                </form>
+            </section>
+
+            <!-- LINKS TAB -->
+            <section id="tab-links" class="tab-panel">
+                <h2>Dodaj povezavo</h2>
+                <form id="links-form" class="admin-form">
+                    <label>Ime (npr. Facebook, Instagram, Spotify)
+                        <input type="text" id="links-label" required>
+                    </label>
+                    <label>URL
+                        <input type="url" id="links-url" required>
+                    </label>
+                    <label>Vrstni red (manjše število = prej)
+                        <input type="number" id="links-sort" value="1">
+                    </label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn">Dodaj</button>
+                    </div>
+                    <p id="links-status" class="form-status"></p>
+                </form>
+
+                <h2>Obstoječe povezave</h2>
+                <div id="links-list" class="admin-list"></div>
+            </section>
+
+            <!-- GALLERY TAB -->
+            <section id="tab-gallery" class="tab-panel">
+                <h2>Dodaj slike dogodka</h2>
+                <form id="gallery-form" class="admin-form">
+                    <label>Ime dogodka (npr. "Koncert Ljubljana 2026")
+                        <input type="text" id="gallery-event" required>
+                    </label>
+                    <label>Slike (lahko izbereš več hkrati)
+                        <input type="file" id="gallery-files" accept="image/*" multiple required>
+                    </label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn">Naloži</button>
+                    </div>
+                    <p id="gallery-status" class="form-status"></p>
+                </form>
+
+                <h2>Galerija</h2>
+                <div id="gallery-admin-list" class="admin-list"></div>
+            </section>
+
+            <!-- BACKGROUNDS TAB -->
+            <section id="tab-backgrounds" class="tab-panel">
+                <h2>Ozadja podstrani</h2>
+                <p class="form-status">Slika se prikaže kot zatemnjeno ozadje na vrhu izbrane strani (za naslovom). Pusti prazno, če ne želiš spreminjati.</p>
+                <div id="backgrounds-list" class="admin-list"></div>
+            </section>
+
+            <!-- DEMOS TAB -->
+            <section id="tab-demos" class="tab-panel">
+                <p class="form-status">Ti posnetki NISO javni – vidni in slišni so samo prijavljenim članom banda na strani clani.html.</p>
+
+                <h2>Dodaj / uredi demo</h2>
+                <form id="demo-form" class="admin-form">
+                    <input type="hidden" id="demo-id">
+                    <label>Pesem (za grupiranje verzij)
+                        <input type="text" id="demo-song" required>
+                    </label>
+                    <label>Oznaka verzije (npr. "Akustika", "Demo v2")
+                        <input type="text" id="demo-version" required>
+                    </label>
+                    <label>Opis
+                        <textarea id="demo-opis" rows="3"></textarea>
+                    </label>
+                    <label>Zvočna datoteka (pusti prazno, da obdržiš obstoječo)
+                        <input type="file" id="demo-file" accept="audio/*">
+                    </label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn">Shrani</button>
+                        <button type="button" id="demo-cancel" class="btn btn-outline" hidden>Prekliči urejanje</button>
+                    </div>
+                    <p id="demo-status" class="form-status"></p>
+                </form>
+
+                <h2>Obstoječi demo posnetki</h2>
+                <div id="demo-admin-list" class="admin-list"></div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="JS/script-admin.js"></script>
+</body>
+</html>

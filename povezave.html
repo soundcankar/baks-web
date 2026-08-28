@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B.A.K.S. – Media</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="CSS/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body data-page="povezave">
+
+    <!-- HEADER -->
+    <header class="site-header">
+        <div class="container">
+            <a href="index.html" class="logo-link">
+                <img src="IMG/logo.jpg" alt="Logo banda B.A.K.S." class="logo">
+                <span class="brand">B.A.K.S.</span>
+            </a>
+
+            <div class="header-flex-wrap">
+                <nav>
+                    <ul>
+                        <li><a href="index.html">Domov</a></li>
+                        <li><a href="novice.html">Novice</a></li>
+                        <li><a href="posnetki.html">Avdio / Video</a></li>
+                        <li><a href="povezave.html" class="active">Media</a></li>
+                    </ul>
+                </nav>
+
+                <div class="socials" id="socials"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- PAGE BANNER -->
+    <div class="page-banner">
+        <h1>Media</h1>
+        <div class="accent-bar"></div>
+    </div>
+
+    <!-- GLAVNI DEL -->
+    <section style="padding-top:30px;">
+        <div class="container">
+            <div id="gallery-list" class="album-block"></div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div>
+                    <div class="footer-brand">
+                        <img src="IMG/logo.jpg" alt="Logo banda B.A.K.S.">
+                        <span>B.A.K.S.</span>
+                    </div>
+                    <p>Coverjev bend, ki dvigne vzdušje na vsakem koncertu.</p>
+                </div>
+
+                <div>
+                    <h3>Navigacija</h3>
+                    <ul class="footer-links">
+                        <li><a href="index.html">Domov</a></li>
+                        <li><a href="novice.html">Novice</a></li>
+                        <li><a href="posnetki.html">Avdio / Video</a></li>
+                        <li><a href="povezave.html">Media</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3>Spremljaj nas</h3>
+                    <ul class="footer-links" id="footer-social-links"></ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <span>B.A.K.S. © 2026 Vse pravice pridržane</span>
+                <div class="footer-bottom-links">
+                    <a href="admin.html">Admin</a>
+                    <a href="clani.html">Člani</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="JS/script-common.js"></script>
+</body>
+</html>

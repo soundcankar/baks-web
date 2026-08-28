@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B.A.K.S. – Člani</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="CSS/style.css">
+    <link rel="stylesheet" href="CSS/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body class="admin-body">
+
+    <!-- LOGIN -->
+    <div id="login-view" class="login-wrap">
+        <form id="login-form" class="login-card">
+            <img src="IMG/logo.jpg" alt="Logo banda B.A.K.S." class="login-logo">
+            <h1>Prijava za člane</h1>
+            <label>
+                Email
+                <input type="email" id="login-email" required autocomplete="username">
+            </label>
+            <label>
+                Geslo
+                <input type="password" id="login-password" required autocomplete="current-password">
+            </label>
+            <button type="submit" class="btn">Prijava</button>
+            <p id="login-error" class="form-error" hidden></p>
+        </form>
+    </div>
+
+    <!-- VSEBINA ZA ČLANE -->
+    <div id="dashboard-view" class="dashboard" hidden>
+        <header class="admin-header">
+            <a href="index.html" class="logo-link">
+                <img src="IMG/logo.jpg" alt="Logo banda B.A.K.S." class="logo">
+                <span class="brand">B.A.K.S. – Demo</span>
+            </a>
+            <button id="logout-btn" class="btn btn-outline">Odjava</button>
+        </header>
+
+        <main class="admin-main">
+            <h2>Demo verzije pesmi</h2>
+            <div id="demo-list" class="admin-list"></div>
+        </main>
+    </div>
+
+    <script src="JS/script-clani.js"></script>
+</body>
+</html>
