@@ -232,6 +232,122 @@ async function initPageBackground() {
   }
 }
 
+// -----------------------------
+// Rock zanimivost dneva (samodejno, iz Wikipedije - "on this day")
+// -----------------------------
+function truncateText(text, maxLen) {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (clean.length <= maxLen) return { text: clean, truncated: false };
+  const cut = clean.slice(0, maxLen);
+  return { text: cut.slice(0, cut.lastIndexOf(' ')), truncated: true };
+}
+
+async function translateToSlovenian(text) {
+  try {
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|sl`);
+    if (!res.ok) return text;
+    const data = await res.json();
+    return (data.responseData && data.responseData.translatedText) || text;
+  } catch (err) {
+    console.error('Napaka pri prevajanju:', err);
+    return text;
+  }
+}
+
+async function loadRockFact() {
+  const container = document.getElementById('rock-fact');
+  if (!container) return;
+
+  const today = new Date();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const cacheKey = `rockFact-${today.getFullYear()}-${mm}-${dd}`;
+
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) {
+    container.innerHTML = cached;
+    return;
+  }
+
+  try {
+    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/births/${mm}/${dd}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const births = data.births || [];
+
+    const descOf = (entry) => (entry.pages && entry.pages[0] && entry.pages[0].description) || '';
+
+    const rockMatch = births.find(e => /rock/i.test(descOf(e)));
+    const musicMatch = births.find(e => /music|singer|guitar|drum|bass|song|band|vocal|composer/i.test(descOf(e)));
+    const match = rockMatch || musicMatch;
+    if (!match) return;
+
+    const page = match.pages && match.pages[0];
+    const name = (match.text || '').split(',')[0].trim();
+    const desc = descOf(match).replace(/\s*\(born \d{4}\)\s*$/i, '').replace(/\s*\(\d{4}–\d{4}\)\s*$/i, '');
+    const url = page && page.content_urls && page.content_urls.desktop && page.content_urls.desktop.page;
+    const dateLabel = today.toLocaleDateString('sl-SI', { day: 'numeric', month: 'long' });
+
+    // Poskusi dobiti daljši opis (omeni bend/skupino, v kateri je oseba igrala) iz Wikipedia povzetka.
+    // Najprej poskusi v slovenščini (če slovenski članek obstaja); če ne, angleškega prevedemo.
+    let bandInfo = desc;
+    let bandInfoIsSlovenian = false;
+    let sourceUrl = url;
+    const pageTitle = page && page.titles && page.titles.canonical;
+    if (pageTitle) {
+      let slTitle = null;
+      try {
+        const llRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${pageTitle}&prop=langlinks&lllang=sl&format=json&origin=*`);
+        if (llRes.ok) {
+          const llData = await llRes.json();
+          const pages = llData.query && llData.query.pages;
+          const firstPage = pages && Object.values(pages)[0];
+          const langlink = firstPage && firstPage.langlinks && firstPage.langlinks[0];
+          if (langlink) slTitle = langlink['*'];
+        }
+      } catch (llErr) {
+        console.error('Napaka pri iskanju slovenskega članka:', llErr);
+      }
+
+      try {
+        const sumUrl = slTitle
+          ? `https://sl.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(slTitle)}`
+          : `https://en.wikipedia.org/api/rest_v1/page/summary/${pageTitle}`;
+        const sumRes = await fetch(sumUrl);
+        if (sumRes.ok) {
+          const summary = await sumRes.json();
+          if (summary.extract) {
+            bandInfo = summary.extract.replace(/\s+/g, ' ').trim().slice(0, 450);
+            bandInfoIsSlovenian = !!slTitle;
+            if (slTitle) {
+              sourceUrl = `https://sl.wikipedia.org/wiki/${encodeURIComponent(slTitle.replace(/ /g, '_'))}`;
+            }
+          }
+        }
+      } catch (sumErr) {
+        console.error('Napaka pri nalaganju opisa benda:', sumErr);
+      }
+    }
+
+    // Če opis ni že v slovenščini (ni bilo slovenskega članka), ga samodejno prevedemo.
+    // Izvirno (neprevedeno oz. polno) besedilo ostane dosegljivo prek povezave na tri pikice.
+    if (!bandInfoIsSlovenian && bandInfo) {
+      bandInfo = await translateToSlovenian(bandInfo);
+    }
+    const { text: bandInfoText, truncated } = truncateText(bandInfo, 220);
+    const ellipsis = truncated
+      ? (sourceUrl ? `<a href="${sourceUrl}" target="_blank" rel="noopener" title="Odpri izvirni zapis">…</a>` : '…')
+      : '';
+
+    const html = `🎸 Na današnji dan (${dateLabel}) leta ${match.year} se je rodil/a ${url ? `<a href="${url}" target="_blank" rel="noopener">${name}</a>` : name}${bandInfoText ? ' – ' + bandInfoText + ellipsis : ''}.`;
+
+    sessionStorage.setItem(cacheKey, html);
+    container.innerHTML = html;
+  } catch (err) {
+    console.error('Napaka pri nalaganju rock zanimivosti:', err);
+  }
+}
+
 async function initCommon() {
   const links = await loadLinks();
   renderHeaderSocials(links);
@@ -248,6 +364,7 @@ async function initCommon() {
     renderSettings(settings);
   }
 
+  loadRockFact();
   initPageBackground();
 }
 
