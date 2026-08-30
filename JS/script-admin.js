@@ -25,6 +25,7 @@ function showDashboard() {
   loadGalleryAdminList();
   loadAlbumsOrderList();
   loadDemoAdminList();
+  loadStats();
 }
 
 // Preveri vlogo ob VSAKI spremembi seje (prijava, obstoječa seja ob nalaganju strani, ...),
@@ -862,6 +863,130 @@ async function loadBackgroundsList() {
       loadBackgroundsList();
     });
   });
+}
+
+// -----------------------------
+// STATISTIKA (anonimni obiski - brez piškotkov/IP/identitete)
+// -----------------------------
+const statsSummary = document.getElementById('stats-summary');
+const statsPages = document.getElementById('stats-pages');
+const statsDaily = document.getElementById('stats-daily');
+const statsReferrers = document.getElementById('stats-referrers');
+const statsDevices = document.getElementById('stats-devices');
+
+const PAGE_LABELS = {
+  index: 'Domov',
+  novice: 'Novice',
+  posnetki: 'Posnetki',
+  povezave: 'Galerija'
+};
+
+async function loadStats() {
+  if (!statsSummary) return;
+
+  const { count: totalCount, error: countError } = await supabaseAdmin
+    .from('page_views')
+    .select('*', { count: 'exact', head: true });
+
+  if (countError) {
+    statsSummary.innerHTML = `<p class="form-error">Napaka: ${countError.message}</p>`;
+    return;
+  }
+
+  const { data: rows, error } = await supabaseAdmin
+    .from('page_views')
+    .select('page, referrer, device, browser, created_at')
+    .order('created_at', { ascending: false })
+    .limit(5000);
+
+  if (error) {
+    statsSummary.innerHTML = `<p class="form-error">Napaka: ${error.message}</p>`;
+    return;
+  }
+
+  const all = rows || [];
+  const now = new Date();
+  const days7 = new Date(now); days7.setDate(days7.getDate() - 7);
+  const days30 = new Date(now); days30.setDate(days30.getDate() - 30);
+
+  const last7 = all.filter(r => new Date(r.created_at) >= days7).length;
+  const last30 = all.filter(r => new Date(r.created_at) >= days30).length;
+
+  statsSummary.innerHTML = `
+    <div class="stats-card"><span class="stats-number">${totalCount ?? all.length}</span><span class="stats-label">Skupaj ogledov</span></div>
+    <div class="stats-card"><span class="stats-number">${last7}</span><span class="stats-label">Zadnjih 7 dni</span></div>
+    <div class="stats-card"><span class="stats-number">${last30}</span><span class="stats-label">Zadnjih 30 dni</span></div>
+  `;
+
+  // Ogledi po straneh
+  const byPage = {};
+  all.forEach(r => { byPage[r.page] = (byPage[r.page] || 0) + 1; });
+  const maxPage = Math.max(1, ...Object.values(byPage));
+  statsPages.innerHTML = Object.keys(byPage).sort((a, b) => byPage[b] - byPage[a]).map(page => `
+    <div class="stats-bar-row">
+      <span style="width:100px;">${PAGE_LABELS[page] || page}</span>
+      <div class="stats-bar-track"><div class="stats-bar-fill" style="width:${(byPage[page] / maxPage) * 100}%"></div></div>
+      <span>${byPage[page]}</span>
+    </div>
+  `).join('') || '<p>Ni še podatkov.</p>';
+
+  // Ogledi po dnevih (zadnjih 14 dni)
+  const dayBuckets = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    dayBuckets.push({
+      key: d.toISOString().slice(0, 10),
+      label: d.toLocaleDateString('sl-SI', { day: 'numeric', month: 'numeric' }),
+      count: 0
+    });
+  }
+  all.forEach(r => {
+    const key = (r.created_at || '').slice(0, 10);
+    const bucket = dayBuckets.find(b => b.key === key);
+    if (bucket) bucket.count++;
+  });
+  const maxDay = Math.max(1, ...dayBuckets.map(b => b.count));
+  statsDaily.innerHTML = dayBuckets.map(b => `
+    <div class="stats-chart-col" title="${b.label}: ${b.count}">
+      <div class="stats-chart-bar" style="height:${(b.count / maxDay) * 100}%"></div>
+      <span class="stats-chart-label">${b.label}</span>
+    </div>
+  `).join('');
+
+  // Od kod prihajajo (izključi prazne in interne napotitve iz baks.si)
+  const refCounts = {};
+  all.forEach(r => {
+    if (!r.referrer) return;
+    let host;
+    try {
+      host = new URL(r.referrer).hostname.replace(/^www\./, '');
+    } catch (e) {
+      return;
+    }
+    if (host.includes('baks.si')) return;
+    refCounts[host] = (refCounts[host] || 0) + 1;
+  });
+  const topRefs = Object.entries(refCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  statsReferrers.innerHTML = topRefs.length
+    ? topRefs.map(([host, count]) => `
+        <div class="admin-list-item"><div class="item-info"><strong>${host}</strong></div><span>${count}</span></div>
+      `).join('')
+    : '<p>Ni zunanjih napotitev (obiski prihajajo neposredno).</p>';
+
+  // Naprava / brskalnik
+  const deviceCounts = {};
+  const browserCounts = {};
+  all.forEach(r => {
+    if (r.device) deviceCounts[r.device] = (deviceCounts[r.device] || 0) + 1;
+    if (r.browser) browserCounts[r.browser] = (browserCounts[r.browser] || 0) + 1;
+  });
+  const deviceHtml = Object.entries(deviceCounts).map(([d, c]) => `
+    <div class="admin-list-item"><div class="item-info"><strong>${d === 'mobile' ? 'Mobilna naprava' : 'Računalnik'}</strong></div><span>${c}</span></div>
+  `).join('');
+  const browserHtml = Object.entries(browserCounts).sort((a, b) => b[1] - a[1]).map(([b, c]) => `
+    <div class="admin-list-item"><div class="item-info"><strong>${b}</strong></div><span>${c}</span></div>
+  `).join('');
+  statsDevices.innerHTML = (deviceHtml + browserHtml) || '<p>Ni še podatkov.</p>';
 }
 
 // -----------------------------

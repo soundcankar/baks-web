@@ -348,6 +348,39 @@ async function loadRockFact() {
   }
 }
 
+// -----------------------------
+// Anonimna statistika obiskov (brez piškotkov, brez IP-ja, brez identitete)
+// -----------------------------
+function detectDevice() {
+  return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
+}
+
+function detectBrowser() {
+  const ua = navigator.userAgent;
+  if (/Edg\//.test(ua)) return 'Edge';
+  if (/OPR\/|Opera/.test(ua)) return 'Opera';
+  if (/Chrome\//.test(ua)) return 'Chrome';
+  if (/Firefox\//.test(ua)) return 'Firefox';
+  if (/Safari\//.test(ua)) return 'Safari';
+  return 'Drugo';
+}
+
+async function logPageView() {
+  const page = document.body.dataset.page;
+  if (!page) return;
+
+  try {
+    await supabaseCommon.from('page_views').insert({
+      page,
+      referrer: (document.referrer || '').slice(0, 300),
+      device: detectDevice(),
+      browser: detectBrowser()
+    });
+  } catch (err) {
+    console.error('Napaka pri beleženju obiska:', err);
+  }
+}
+
 async function initCommon() {
   const links = await loadLinks();
   renderHeaderSocials(links);
@@ -366,6 +399,7 @@ async function initCommon() {
 
   loadRockFact();
   initPageBackground();
+  logPageView();
 }
 
 initCommon();
