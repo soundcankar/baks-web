@@ -270,6 +270,27 @@ section { padding: 70px 0; }
   border-radius: 2px;
 }
 
+/* Pokrovitelji */
+.sponsors-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+
+.sponsors-grid a,
+.sponsors-grid span {
+  display: block;
+  width: 100%;
+}
+
+.sponsors-grid img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
 /* Band info / about */
 .band-info {
   display: grid;
@@ -294,6 +315,7 @@ section { padding: 70px 0; }
 
 .band-info .band-text p {
   color: var(--text-muted);
+  white-space: pre-line;
 }
 
 .members {

@@ -47,6 +47,7 @@
             <button class="tab-btn" data-tab="settings">Info o bandu</button>
             <button class="tab-btn" data-tab="links">Povezave</button>
             <button class="tab-btn" data-tab="gallery">Galerija</button>
+            <button class="tab-btn" data-tab="sponsors">Pokrovitelji</button>
             <button class="tab-btn" data-tab="backgrounds">Ozadja</button>
             <button class="tab-btn" data-tab="demos">Demo (člani)</button>
             <button class="tab-btn" data-tab="stats">Statistika</button>
@@ -183,6 +184,35 @@
 
                 <h2>Galerija</h2>
                 <div id="gallery-admin-list" class="admin-list"></div>
+            </section>
+
+            <!-- SPONSORS TAB -->
+            <section id="tab-sponsors" class="tab-panel">
+                <h2>Dodaj / uredi pokrovitelja</h2>
+                <form id="sponsors-form" class="admin-form">
+                    <input type="hidden" id="sponsors-id">
+                    <label>Ime pokrovitelja
+                        <input type="text" id="sponsors-name" required>
+                    </label>
+                    <label>Logotip (pusti prazno, da obdržiš obstoječega)
+                        <input type="file" id="sponsors-logo" accept="image/*">
+                        <small class="field-hint">Priporočeno: širok format (npr. 1200×300 px, razmerje cca. 4:1), PNG s prosojnim ozadjem ali JPG. Slika se prikaže v polni širini strani, zato kvadratne ali visoke slike ne bodo videti dobro.</small>
+                    </label>
+                    <label>Spletna stran (neobvezno)
+                        <input type="url" id="sponsors-website" placeholder="https://...">
+                    </label>
+                    <label>Vrstni red (manjše število = prej)
+                        <input type="number" id="sponsors-sort" value="1">
+                    </label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn">Shrani</button>
+                        <button type="button" id="sponsors-cancel" class="btn btn-outline" hidden>Prekliči urejanje</button>
+                    </div>
+                    <p id="sponsors-status" class="form-status"></p>
+                </form>
+
+                <h2>Obstoječi pokrovitelji</h2>
+                <div id="sponsors-list" class="admin-list"></div>
             </section>
 
             <!-- BACKGROUNDS TAB -->

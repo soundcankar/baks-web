@@ -349,6 +349,37 @@ async function loadRockFact() {
 }
 
 // -----------------------------
+// Pokrovitelji
+// -----------------------------
+async function loadSponsors() {
+  const { data, error } = await supabaseCommon
+    .from('sponsors')
+    .select('*')
+    .order('sort_order', { ascending: true });
+
+  if (error) {
+    console.error('Napaka pri nalaganju pokroviteljev:', error);
+    return [];
+  }
+  return data || [];
+}
+
+function renderSponsors(sponsors) {
+  const section = document.getElementById('sponsors-section');
+  const grid = document.getElementById('sponsors-grid');
+  if (!section || !grid || sponsors.length === 0) return;
+
+  grid.innerHTML = sponsors.map(s => {
+    const img = `<img src="${s.logo_url}" alt="${s.name}" loading="lazy">`;
+    return s.website_url
+      ? `<a href="${s.website_url}" target="_blank" rel="noopener" title="${s.name}">${img}</a>`
+      : `<span title="${s.name}">${img}</span>`;
+  }).join('');
+
+  section.hidden = false;
+}
+
+// -----------------------------
 // Anonimna statistika obiskov (brez piškotkov, brez IP-ja, brez identitete)
 // -----------------------------
 function detectDevice() {
@@ -390,6 +421,11 @@ async function initCommon() {
   if (document.getElementById('gallery-list')) {
     const images = await loadGallery();
     renderGallery(images);
+  }
+
+  if (document.getElementById('sponsors-grid')) {
+    const sponsors = await loadSponsors();
+    renderSponsors(sponsors);
   }
 
   if (document.getElementById('hero-tagline') || document.getElementById('about-text') || document.getElementById('members-list')) {

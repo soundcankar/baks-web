@@ -26,6 +26,7 @@ function showDashboard() {
   loadAlbumsOrderList();
   loadDemoAdminList();
   loadStats();
+  loadSponsorsList();
 }
 
 // Preveri vlogo ob VSAKI spremembi seje (prijava, obstoječa seja ob nalaganju strani, ...),
@@ -672,6 +673,121 @@ galleryForm.addEventListener('submit', async (e) => {
     loadGalleryAdminList();
   } catch (err) {
     galleryStatus.textContent = 'Napaka: ' + err.message;
+  }
+});
+
+// -----------------------------
+// POKROVITELJI
+// -----------------------------
+const sponsorsForm = document.getElementById('sponsors-form');
+const sponsorsIdField = document.getElementById('sponsors-id');
+const sponsorsNameField = document.getElementById('sponsors-name');
+const sponsorsLogoField = document.getElementById('sponsors-logo');
+const sponsorsWebsiteField = document.getElementById('sponsors-website');
+const sponsorsSortField = document.getElementById('sponsors-sort');
+const sponsorsStatus = document.getElementById('sponsors-status');
+const sponsorsCancelBtn = document.getElementById('sponsors-cancel');
+const sponsorsList = document.getElementById('sponsors-list');
+
+let sponsorsExistingLogoUrl = null;
+
+function resetSponsorsForm() {
+  sponsorsForm.reset();
+  sponsorsIdField.value = '';
+  sponsorsExistingLogoUrl = null;
+  sponsorsCancelBtn.hidden = true;
+  sponsorsStatus.textContent = '';
+  sponsorsSortField.value = 1;
+}
+
+sponsorsCancelBtn.addEventListener('click', resetSponsorsForm);
+
+async function loadSponsorsList() {
+  if (!sponsorsList) return;
+
+  const { data, error } = await supabaseAdmin
+    .from('sponsors')
+    .select('*')
+    .order('sort_order', { ascending: true });
+
+  if (error) {
+    sponsorsList.innerHTML = `<p class="form-error">Napaka: ${error.message}</p>`;
+    return;
+  }
+
+  const all = data || [];
+
+  sponsorsList.innerHTML = all.map(s => `
+    <div class="admin-list-item">
+      <img src="${s.logo_url}" alt="${s.name}" style="height:40px; width:auto; object-fit:contain;">
+      <div class="item-info">
+        <strong>${s.name}</strong>
+        <span>${s.website_url || ''}</span>
+      </div>
+      <div class="item-actions">
+        <button data-edit="${s.id}">Uredi</button>
+        <button data-delete="${s.id}" class="danger">Izbriši</button>
+      </div>
+    </div>
+  `).join('') || '<p>Ni še dodanih pokroviteljev.</p>';
+
+  sponsorsList.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = all.find(s => String(s.id) === btn.dataset.edit);
+      if (!item) return;
+      sponsorsIdField.value = item.id;
+      sponsorsNameField.value = item.name;
+      sponsorsWebsiteField.value = item.website_url || '';
+      sponsorsSortField.value = item.sort_order || 1;
+      sponsorsExistingLogoUrl = item.logo_url;
+      sponsorsCancelBtn.hidden = false;
+      window.scrollTo({ top: sponsorsForm.offsetTop - 20, behavior: 'smooth' });
+    });
+  });
+
+  sponsorsList.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Izbrišem tega pokrovitelja?')) return;
+      const { error } = await supabaseAdmin.from('sponsors').delete().eq('id', btn.dataset.delete);
+      if (error) alert('Napaka pri brisanju: ' + error.message);
+      loadSponsorsList();
+    });
+  });
+}
+
+sponsorsForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  sponsorsStatus.textContent = 'Shranjujem …';
+
+  try {
+    let logo_url = sponsorsExistingLogoUrl;
+    if (sponsorsLogoField.files[0]) {
+      logo_url = await uploadMedia(sponsorsLogoField.files[0], 'sponsors');
+    }
+
+    if (!logo_url) throw new Error('Dodaj logotip.');
+
+    const payload = {
+      name: sponsorsNameField.value,
+      logo_url,
+      website_url: sponsorsWebsiteField.value || null,
+      sort_order: Number(sponsorsSortField.value) || 0
+    };
+
+    let error;
+    if (sponsorsIdField.value) {
+      ({ error } = await supabaseAdmin.from('sponsors').update(payload).eq('id', sponsorsIdField.value));
+    } else {
+      ({ error } = await supabaseAdmin.from('sponsors').insert(payload));
+    }
+
+    if (error) throw error;
+
+    sponsorsStatus.textContent = 'Shranjeno.';
+    resetSponsorsForm();
+    loadSponsorsList();
+  } catch (err) {
+    sponsorsStatus.textContent = 'Napaka: ' + err.message;
   }
 });
 
