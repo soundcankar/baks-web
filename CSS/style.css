@@ -286,9 +286,11 @@ section { padding: 70px 0; }
 
 .sponsors-grid img {
   display: block;
-  width: 100%;
+  width: auto;
   height: auto;
+  max-width: 100%;
   object-fit: contain;
+  margin: 0 auto;
 }
 
 /* Band info / about */
