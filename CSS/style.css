@@ -547,6 +547,11 @@ article p strong { color: var(--text); }
   margin-bottom: 30px;
 }
 
+.footer-links + h3 {
+  margin-top: 24px;
+  margin-bottom: 4px;
+}
+
 .footer-grid h3 {
   font-size: 1rem;
   color: var(--text-muted);
@@ -602,6 +607,20 @@ article p strong { color: var(--text); }
 }
 
 .footer-links a:hover { color: var(--accent); }
+
+.footer-contact {
+  margin-top: 4px;
+  line-height: 1.6;
+}
+
+.footer-contact a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.footer-contact a:hover {
+  color: var(--accent);
+}
 
 .footer-bottom {
   border-top: 1px solid var(--border);
