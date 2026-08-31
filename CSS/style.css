@@ -26,6 +26,10 @@ body {
   line-height: 1.6;
 }
 
+.settings-pending {
+  visibility: hidden;
+}
+
 h1, h2, h3 {
   font-family: var(--font-display);
   letter-spacing: 1px;

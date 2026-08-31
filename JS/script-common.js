@@ -428,9 +428,18 @@ async function initCommon() {
     renderSponsors(sponsors);
   }
 
-  if (document.getElementById('hero-tagline') || document.getElementById('about-text') || document.getElementById('members-list')) {
-    const settings = await loadSettings();
-    renderSettings(settings);
+  const taglineEl = document.getElementById('hero-tagline');
+  const aboutEl = document.getElementById('about-text');
+  const membersEl = document.getElementById('members-list');
+  if (taglineEl || aboutEl || membersEl) {
+    try {
+      const settings = await loadSettings();
+      renderSettings(settings);
+    } finally {
+      if (taglineEl) taglineEl.classList.remove('settings-pending');
+      if (aboutEl) aboutEl.classList.remove('settings-pending');
+      if (membersEl) membersEl.classList.remove('settings-pending');
+    }
   }
 
   loadRockFact();
