@@ -37,15 +37,39 @@
 
     <!-- PAGE BANNER -->
     <div class="page-banner">
-        <h1>Posnetki</h1>
+        <h1>Diskografija</h1>
         <div class="accent-bar"></div>
     </div>
+
+    <!-- RADIO -->
+    <section style="padding-top:30px; padding-bottom:0;">
+        <div class="container">
+            <div class="section-heading" style="text-align:left; margin-bottom:20px;">
+                <h2>B.A.K.S. Radio</h2>
+            </div>
+            <div class="radio-player" id="radio-player" hidden>
+                <div class="radio-info">
+                    <span class="radio-live-dot"></span>
+                    <div>
+                        <strong id="radio-track-title">B.A.K.S. Radio</strong>
+                        <span id="radio-track-album"></span>
+                    </div>
+                </div>
+                <div class="radio-controls">
+                    <button id="radio-play-btn" class="btn" type="button"> ▶ </button>
+                    <label class="radio-volume">
+                        🔊 <input type="range" id="radio-volume" min="0" max="100" value="80">
+                    </label>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <!-- GLAVNI DEL -->
     <section style="padding-top:30px;">
         <div class="container">
             <div class="section-heading" style="text-align:left; margin-bottom:20px;">
-                <h2>Avdio</h2>
+                <h2>Albumi</h2>
             </div>
             <div id="audio-posnetki"></div>
 

@@ -19,6 +19,69 @@ function toYouTubeEmbed(url) {
     return url;
 }
 
+// -----------------------------
+// RADIO – naključno predvajanje vseh audio posnetkov
+// -----------------------------
+function initRadio(allTracks) {
+    const audioTracks = (allTracks || []).filter(p => p.type === 'audio' && p.file_url);
+    const player = document.getElementById('radio-player');
+    if (!player || audioTracks.length === 0) return;
+
+    // Fisher-Yates premešanje
+    const queue = [...audioTracks];
+    for (let i = queue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [queue[i], queue[j]] = [queue[j], queue[i]];
+    }
+
+    let index = 0;
+    const audioEl = new Audio();
+    audioEl.volume = 0.8;
+
+    const playBtn = document.getElementById('radio-play-btn');
+    const titleEl = document.getElementById('radio-track-title');
+    const albumEl = document.getElementById('radio-track-album');
+    const volumeEl = document.getElementById('radio-volume');
+
+    function loadTrack(i) {
+        const track = queue[i];
+        audioEl.src = track.file_url;
+        titleEl.textContent = track.naslov;
+        albumEl.textContent = track.album ? `· ${track.album}` : '';
+    }
+
+    function playNext() {
+        index = (index + 1) % queue.length;
+        loadTrack(index);
+        audioEl.play();
+    }
+
+    audioEl.addEventListener('ended', playNext);
+    audioEl.addEventListener('play', () => {
+        playBtn.textContent = '⏸ ';
+        player.classList.add('radio-playing');
+    });
+    audioEl.addEventListener('pause', () => {
+        playBtn.textContent = '▶ ';
+        player.classList.remove('radio-playing');
+    });
+
+    playBtn.addEventListener('click', () => {
+        if (audioEl.paused) {
+            audioEl.play();
+        } else {
+            audioEl.pause();
+        }
+    });
+
+    volumeEl.addEventListener('input', () => {
+        audioEl.volume = volumeEl.value / 100;
+    });
+
+    loadTrack(index);
+    player.hidden = false;
+}
+
 // Glavna funkcija za nalaganje posnetkov
 async function loadPosnetki() {
     const { data, error } = await supabase1
@@ -31,12 +94,18 @@ async function loadPosnetki() {
         return;
     }
 
+    initRadio(data);
+
     const { data: albumOrderData } = await supabase1
         .from('albums')
         .select('*');
 
     const albumOrder = {};
-    (albumOrderData || []).forEach(a => { albumOrder[a.name] = a.sort_order; });
+    const albumImages = {};
+    (albumOrderData || []).forEach(a => {
+        albumOrder[a.name] = a.sort_order;
+        albumImages[a.name] = a.image_url;
+    });
 
     const audioDiv = document.getElementById("audio-posnetki");
     const videoDiv = document.getElementById("video-posnetki");
@@ -85,6 +154,7 @@ async function loadPosnetki() {
         block.innerHTML += `
             <article>
                 <h2>${albumName}</h2>
+                ${albumImages[albumName] ? `<img src="${albumImages[albumName]}" alt="${albumName}" class="album-cover">` : ''}
                 ${tracksHtml}
             </article>
         `;

@@ -437,13 +437,49 @@ async function loadAlbumsOrderList() {
     <div class="admin-list-item">
       <div class="item-info">
         <strong>${a.name}</strong>
+        <span>${a.image_url ? 'Slika nastavljena' : 'Ni slike'}</span>
+        <input type="file" accept="image/*" data-album-file="${a.name}" style="margin-top:8px;">
       </div>
       <div class="item-actions">
         <button data-move-up="${a.name}" ${index === 0 ? 'disabled' : ''}>&uarr;</button>
         <button data-move-down="${a.name}" ${index === albums.length - 1 ? 'disabled' : ''}>&darr;</button>
+        <button data-album-save="${a.name}">Shrani sliko</button>
+        <button data-album-remove="${a.name}" class="danger">Odstrani sliko</button>
       </div>
     </div>
   `).join('') || '<p>Ni še albumov (dodaj audio posnetek z imenom albuma).</p>';
+
+  albumsOrderList.querySelectorAll('[data-album-save]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const name = btn.dataset.albumSave;
+      const fileInput = albumsOrderList.querySelector(`[data-album-file="${name}"]`);
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert('Najprej izberi sliko.');
+        return;
+      }
+
+      try {
+        const image_url = await uploadMedia(file, 'albums');
+        const { error } = await supabaseAdmin.from('albums').update({ image_url }).eq('name', name);
+        if (error) throw error;
+        loadAlbumsOrderList();
+      } catch (err) {
+        alert('Napaka: ' + err.message);
+      }
+    });
+  });
+
+  albumsOrderList.querySelectorAll('[data-album-remove]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const name = btn.dataset.albumRemove;
+      if (!confirm('Odstranim sliko tega albuma?')) return;
+      const { error } = await supabaseAdmin.from('albums').update({ image_url: null }).eq('name', name);
+      if (error) alert('Napaka: ' + error.message);
+      loadAlbumsOrderList();
+    });
+  });
 
   // Ponovno oštevilči sort_order vseh albumov glede na trenutni vrstni red v seznamu
   // (namesto zamenjave surovih vrednosti, ki so lahko vse enake in bi zamenjava bila brez učinka).
