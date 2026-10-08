@@ -19,6 +19,14 @@ function toYouTubeEmbed(url) {
     return url;
 }
 
+// Anonimno štetje predvajanj (samo pesem + čas, brez identitete)
+function logTrackPlay(track, source) {
+    supabase1
+        .from('track_plays')
+        .insert({ naslov: track.naslov, album: track.album || null, source })
+        .then(({ error }) => { if (error) console.error('Napaka pri beleženju predvajanja:', error); });
+}
+
 // -----------------------------
 // RADIO – naključno predvajanje vseh audio posnetkov
 // -----------------------------
@@ -60,6 +68,8 @@ function initRadio(allTracks) {
     audioEl.addEventListener('play', () => {
         playBtn.textContent = '⏸ ';
         player.classList.add('radio-playing');
+        // Štejemo samo začetek pesmi, ne nadaljevanja po premoru
+        if (audioEl.currentTime < 1) logTrackPlay(queue[index], 'radio');
     });
     audioEl.addEventListener('pause', () => {
         playBtn.textContent = '▶ ';
@@ -145,7 +155,7 @@ async function loadPosnetki() {
                     <h3>${posnetek.naslov}</h3>
                     <p>${posnetek.opis}</p>
                 </div>
-                <audio controls>
+                <audio controls data-track-id="${posnetek.id}">
                     <source src="${posnetek.file_url}" type="audio/mpeg">
                 </audio>
             </div>
@@ -159,6 +169,15 @@ async function loadPosnetki() {
             </article>
         `;
     }
+
+    // Štetje predvajanj (blok.innerHTML += zgoraj ponovno zgradi elemente, zato poslušalce dodamo šele zdaj)
+    const tracksById = new Map(data.map(p => [String(p.id), p]));
+    block.querySelectorAll('audio[data-track-id]').forEach(el => {
+        el.addEventListener('play', () => {
+            // Štejemo samo začetek pesmi, ne nadaljevanja po premoru
+            if (el.currentTime < 1) logTrackPlay(tracksById.get(el.dataset.trackId), 'seznam');
+        });
+    });
 
     // -----------------------------
     //  VIDEO – poenoten prikaz

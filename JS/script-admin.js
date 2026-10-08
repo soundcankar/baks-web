@@ -315,13 +315,35 @@ async function loadPosnetkiList() {
     html += videos.map(p => itemRow(p, false)).join('');
   }
 
-  Object.keys(albums).forEach(albumName => {
+  const albumNames = Object.keys(albums);
+  albumNames.forEach((albumName, ai) => {
     const tracks = albums[albumName];
-    html += `<h3 style="margin:24px 0 10px;">${albumName}</h3>`;
+    html += `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin:24px 0 10px;">
+        <h3 style="margin:0;">${albumName}</h3>
+        <button data-album-delete="${ai}" class="danger">Odstrani album</button>
+      </div>`;
     html += tracks.map((p, index) => itemRow(p, true, index, tracks.length)).join('');
   });
 
   posnetkiList.innerHTML = html || '<p>Ni še dodanih posnetkov.</p>';
+
+  // Odstrani celoten album (vse pesmi + vnos albuma s sliko in vrstnim redom)
+  posnetkiList.querySelectorAll('[data-album-delete]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const albumName = albumNames[btn.dataset.albumDelete];
+      const count = albums[albumName].length;
+      if (!confirm(`Odstranim album "${albumName}" in vseh ${count} posnetkov v njem?`)) return;
+
+      const tracksRes = await supabaseAdmin.from('posnetki').delete().eq('type', 'audio').eq('album', albumName);
+      if (tracksRes.error) { alert('Napaka pri brisanju: ' + tracksRes.error.message); return; }
+      const albumRes = await supabaseAdmin.from('albums').delete().eq('name', albumName);
+      if (albumRes.error) alert('Napaka pri brisanju albuma: ' + albumRes.error.message);
+
+      loadPosnetkiList();
+      loadAlbumsOrderList();
+    });
+  });
 
   posnetkiList.querySelectorAll('[data-edit]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -699,6 +721,7 @@ async function loadGalleryAdminList() {
           <button data-event-up="${ei}" ${ei === 0 ? 'disabled' : ''}>&uarr;</button>
           <button data-event-down="${ei}" ${ei === galleryEvents.length - 1 ? 'disabled' : ''}>&darr;</button>
           <button data-event-add="${ei}">Dodaj slike</button>
+          <button data-event-remove="${ei}" class="danger">Odstrani mapo</button>
           <input type="file" accept="image/*" multiple hidden data-event-files="${ei}">
         </div>
       </div>
@@ -721,6 +744,17 @@ async function loadGalleryAdminList() {
     btn.addEventListener('click', async () => {
       if (!confirm('Izbrišem to sliko?')) return;
       const { error } = await supabaseAdmin.from('gallery').delete().eq('id', btn.dataset.deleteImage);
+      if (error) alert('Napaka pri brisanju: ' + error.message);
+      loadGalleryAdminList();
+    });
+  });
+
+  // Odstrani celotno mapo (vse slike dogodka)
+  galleryAdminList.querySelectorAll('[data-event-remove]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ev = galleryEvents[btn.dataset.eventRemove];
+      if (!confirm(`Odstranim mapo "${ev.name}" in vseh ${ev.images.length} slik v njej?`)) return;
+      const { error } = await supabaseAdmin.from('gallery').delete().eq('event_name', ev.name);
       if (error) alert('Napaka pri brisanju: ' + error.message);
       loadGalleryAdminList();
     });
@@ -1140,6 +1174,8 @@ async function loadBackgroundsList() {
 const statsSummary = document.getElementById('stats-summary');
 const statsPages = document.getElementById('stats-pages');
 const statsDaily = document.getElementById('stats-daily');
+const statsHours = document.getElementById('stats-hours');
+const statsWeekdays = document.getElementById('stats-weekdays');
 const statsReferrers = document.getElementById('stats-referrers');
 const statsDevices = document.getElementById('stats-devices');
 
@@ -1150,8 +1186,35 @@ const PAGE_LABELS = {
   povezave: 'Galerija'
 };
 
+// Najbolj poslušane pesmi (iz tabele track_plays, ki jo polni stran Posnetki)
+async function loadTrackStats() {
+  const statsTracks = document.getElementById('stats-tracks');
+  if (!statsTracks) return;
+
+  // Seštevanje poteka v bazi (funkcija track_play_stats), prenese se samo top 10
+  const { data, error } = await supabaseAdmin.rpc('track_play_stats');
+
+  if (error) {
+    statsTracks.innerHTML = `<p class="form-error">Napaka: ${error.message}</p>`;
+    return;
+  }
+
+  const top = (data || []).map(r => ({ naslov: r.naslov, album: r.album, count: Number(r.plays) }));
+
+  const max = Math.max(1, ...top.map(t => t.count));
+  statsTracks.innerHTML = top.map(t => `
+    <div class="stats-bar-row">
+      <span style="width:220px;">${t.naslov}${t.album ? ` <small style="color:var(--text-muted);">· ${t.album}</small>` : ''}</span>
+      <div class="stats-bar-track"><div class="stats-bar-fill" style="width:${(t.count / max) * 100}%"></div></div>
+      <span>${t.count}</span>
+    </div>
+  `).join('') || '<p>Ni še podatkov (štetje se začne, ko nekdo predvaja pesem).</p>';
+}
+
 async function loadStats() {
   if (!statsSummary) return;
+
+  loadTrackStats();
 
   const { count: totalCount, error: countError } = await supabaseAdmin
     .from('page_views')
@@ -1178,13 +1241,36 @@ async function loadStats() {
   const days7 = new Date(now); days7.setDate(days7.getDate() - 7);
   const days30 = new Date(now); days30.setDate(days30.getDate() - 30);
 
+  const days14 = new Date(now); days14.setDate(days14.getDate() - 14);
+  const startOfToday = new Date(now); startOfToday.setHours(0, 0, 0, 0);
+
   const last7 = all.filter(r => new Date(r.created_at) >= days7).length;
+  const prev7 = all.filter(r => { const d = new Date(r.created_at); return d >= days14 && d < days7; }).length;
   const last30 = all.filter(r => new Date(r.created_at) >= days30).length;
+  const today = all.filter(r => new Date(r.created_at) >= startOfToday).length;
+
+  // Trend: zadnjih 7 dni v primerjavi s prejšnjimi 7 dnevi
+  let trendHtml = '';
+  if (prev7 > 0) {
+    const pct = Math.round(((last7 - prev7) / prev7) * 100);
+    trendHtml = `<span class="stats-label" style="display:block;">${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)} % glede na prejšnji teden</span>`;
+  }
+
+  // Najboljši dan (po datumu obiska)
+  const perDay = {};
+  all.forEach(r => { const k = (r.created_at || '').slice(0, 10); if (k) perDay[k] = (perDay[k] || 0) + 1; });
+  const bestDayKey = Object.keys(perDay).sort((a, b) => perDay[b] - perDay[a])[0];
+  const bestDayHtml = bestDayKey
+    ? `<div class="stats-card"><span class="stats-number">${perDay[bestDayKey]}</span><span class="stats-label">Najboljši dan (${new Date(bestDayKey).toLocaleDateString('sl-SI', { day: 'numeric', month: 'numeric', year: 'numeric' })})</span></div>`
+    : '';
 
   statsSummary.innerHTML = `
     <div class="stats-card"><span class="stats-number">${totalCount ?? all.length}</span><span class="stats-label">Skupaj ogledov</span></div>
-    <div class="stats-card"><span class="stats-number">${last7}</span><span class="stats-label">Zadnjih 7 dni</span></div>
+    <div class="stats-card"><span class="stats-number">${today}</span><span class="stats-label">Danes</span></div>
+    <div class="stats-card"><span class="stats-number">${last7}</span><span class="stats-label">Zadnjih 7 dni</span>${trendHtml}</div>
     <div class="stats-card"><span class="stats-number">${last30}</span><span class="stats-label">Zadnjih 30 dni</span></div>
+    <div class="stats-card"><span class="stats-number">${(last30 / 30).toFixed(1)}</span><span class="stats-label">Povprečje na dan (30 dni)</span></div>
+    ${bestDayHtml}
   `;
 
   // Ogledi po straneh
@@ -1221,6 +1307,30 @@ async function loadStats() {
       <span class="stats-chart-label">${b.label}</span>
     </div>
   `).join('');
+
+  // Graf iz seznama { label, count } (enaka oblika kot graf po dnevih)
+  const renderBars = (el, buckets) => {
+    const max = Math.max(1, ...buckets.map(b => b.count));
+    el.innerHTML = buckets.map(b => `
+      <div class="stats-chart-col" title="${b.label}: ${b.count}">
+        <div class="stats-chart-bar" style="height:${(b.count / max) * 100}%"></div>
+        <span class="stats-chart-label">${b.label}</span>
+      </div>
+    `).join('');
+  };
+
+  // Ogledi po urah dneva (lokalni čas) - kdaj je stran najbolj obiskana
+  const hourBuckets = Array.from({ length: 24 }, (_, h) => ({ label: String(h), count: 0 }));
+  // Ogledi po dnevih v tednu (ponedeljek prvi)
+  const weekdayLabels = ['Pon', 'Tor', 'Sre', 'Čet', 'Pet', 'Sob', 'Ned'];
+  const weekdayBuckets = weekdayLabels.map(label => ({ label, count: 0 }));
+  all.forEach(r => {
+    const d = new Date(r.created_at);
+    hourBuckets[d.getHours()].count++;
+    weekdayBuckets[(d.getDay() + 6) % 7].count++;
+  });
+  renderBars(statsHours, hourBuckets);
+  renderBars(statsWeekdays, weekdayBuckets);
 
   // Od kod prihajajo (izključi prazne in interne napotitve iz baks.si)
   const refCounts = {};
