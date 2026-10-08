@@ -76,6 +76,8 @@ async function loadGallery() {
   const { data, error } = await supabaseCommon
     .from('gallery')
     .select('*')
+    .order('event_order', { ascending: true })
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -94,17 +96,18 @@ function renderGallery(images) {
     return;
   }
 
-  const events = {};
+  // Map ohrani vrstni red vstavljanja (objekt bi imena kot "2026" razvrstil po številki)
+  const events = new Map();
   images.forEach(img => {
-    if (!events[img.event_name]) events[img.event_name] = [];
-    events[img.event_name].push(img);
+    if (!events.has(img.event_name)) events.set(img.event_name, []);
+    events.get(img.event_name).push(img);
   });
 
-  container.innerHTML = Object.keys(events).map(eventName => `
+  container.innerHTML = Array.from(events, ([eventName, imgs]) => `
     <article>
       <h2>${eventName}</h2>
       <div class="gallery-grid">
-        ${events[eventName].map(img => `<img src="${img.image_url}" alt="${eventName}" loading="lazy">`).join('')}
+        ${imgs.map(img => `<img src="${img.image_url}" alt="${eventName}" loading="lazy">`).join('')}
       </div>
     </article>
   `).join('');

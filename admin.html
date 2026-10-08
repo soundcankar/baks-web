@@ -170,8 +170,9 @@
             <section id="tab-gallery" class="tab-panel">
                 <h2>Dodaj slike dogodka</h2>
                 <form id="gallery-form" class="admin-form">
-                    <label>Ime dogodka (npr. "Koncert Ljubljana 2026")
-                        <input type="text" id="gallery-event" required>
+                    <label>Ime dogodka (npr. "Koncert Ljubljana 2026"; če izbereš obstoječega, se slike dodajo vanj)
+                        <input type="text" id="gallery-event" list="gallery-event-options" required>
+                        <datalist id="gallery-event-options"></datalist>
                     </label>
                     <label>Slike (lahko izbereš več hkrati)
                         <input type="file" id="gallery-files" accept="image/*" multiple required>

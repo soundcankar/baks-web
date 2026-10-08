@@ -663,10 +663,17 @@ const galleryFilesField = document.getElementById('gallery-files');
 const galleryStatus = document.getElementById('gallery-status');
 const galleryAdminList = document.getElementById('gallery-admin-list');
 
+const galleryEventsDatalist = document.getElementById('gallery-event-options');
+
+// Dogodki po vrstnem redu: [{ name, images: [...] }, ...]
+let galleryEvents = [];
+
 async function loadGalleryAdminList() {
   const { data, error } = await supabaseAdmin
     .from('gallery')
     .select('*')
+    .order('event_order', { ascending: true })
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -674,20 +681,36 @@ async function loadGalleryAdminList() {
     return;
   }
 
-  const events = {};
+  // Map ohrani vrstni red vstavljanja (objekt bi imena kot "2026" razvrstil po številki)
+  const events = new Map();
   (data || []).forEach(img => {
-    if (!events[img.event_name]) events[img.event_name] = [];
-    events[img.event_name].push(img);
+    if (!events.has(img.event_name)) events.set(img.event_name, []);
+    events.get(img.event_name).push(img);
   });
+  galleryEvents = Array.from(events, ([name, images]) => ({ name, images }));
 
-  galleryAdminList.innerHTML = Object.keys(events).map(eventName => `
+  galleryEventsDatalist.innerHTML = galleryEvents.map(ev => `<option value="${ev.name}"></option>`).join('');
+
+  galleryAdminList.innerHTML = galleryEvents.map((ev, ei) => `
     <div class="admin-list-item" style="flex-direction:column; align-items:stretch;">
-      <strong style="margin-bottom:10px;">${eventName}</strong>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+        <strong>${ev.name}</strong>
+        <div class="item-actions">
+          <button data-event-up="${ei}" ${ei === 0 ? 'disabled' : ''}>&uarr;</button>
+          <button data-event-down="${ei}" ${ei === galleryEvents.length - 1 ? 'disabled' : ''}>&darr;</button>
+          <button data-event-add="${ei}">Dodaj slike</button>
+          <input type="file" accept="image/*" multiple hidden data-event-files="${ei}">
+        </div>
+      </div>
       <div style="display:flex; flex-wrap:wrap; gap:10px;">
-        ${events[eventName].map(img => `
+        ${ev.images.map((img, ii) => `
           <div style="position:relative;">
             <img src="${img.image_url}" alt="" style="width:90px; height:90px; object-fit:cover; border-radius:6px;">
             <button data-delete-image="${img.id}" class="danger" style="position:absolute; top:4px; right:4px; padding:2px 6px; font-size:0.75rem;">✕</button>
+            <div style="display:flex; justify-content:center; gap:4px; margin-top:4px;">
+              <button data-img-left="${ei}:${ii}" ${ii === 0 ? 'disabled' : ''} style="padding:2px 8px;">&larr;</button>
+              <button data-img-right="${ei}:${ii}" ${ii === ev.images.length - 1 ? 'disabled' : ''} style="padding:2px 8px;">&rarr;</button>
+            </div>
           </div>
         `).join('')}
       </div>
@@ -702,6 +725,93 @@ async function loadGalleryAdminList() {
       loadGalleryAdminList();
     });
   });
+
+  // Dodajanje slik v že obstoječo mapo (dogodek)
+  galleryAdminList.querySelectorAll('[data-event-add]').forEach(btn => {
+    const fileInput = galleryAdminList.querySelector(`[data-event-files="${btn.dataset.eventAdd}"]`);
+    btn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async () => {
+      if (!fileInput.files.length) return;
+      btn.disabled = true;
+      btn.textContent = 'Nalagam …';
+      try {
+        await addGalleryImages(galleryEvents[btn.dataset.eventAdd].name, Array.from(fileInput.files));
+      } catch (err) {
+        alert('Napaka: ' + err.message);
+      }
+      loadGalleryAdminList();
+    });
+  });
+
+  // Ponovno oštevilči vrstni red glede na trenutni seznam (surove vrednosti so lahko vse enake)
+  async function saveEventOrder(order) {
+    const results = await Promise.all(
+      order.map((ev, i) => supabaseAdmin.from('gallery').update({ event_order: i }).eq('event_name', ev.name))
+    );
+    const failed = results.find(r => r.error);
+    if (failed) alert('Napaka pri urejanju vrstnega reda: ' + failed.error.message);
+    loadGalleryAdminList();
+  }
+
+  async function saveImageOrder(images) {
+    const results = await Promise.all(
+      images.map((img, i) => supabaseAdmin.from('gallery').update({ sort_order: i }).eq('id', img.id))
+    );
+    const failed = results.find(r => r.error);
+    if (failed) alert('Napaka pri urejanju vrstnega reda: ' + failed.error.message);
+    loadGalleryAdminList();
+  }
+
+  function swapped(list, a, b) {
+    const copy = [...list];
+    [copy[a], copy[b]] = [copy[b], copy[a]];
+    return copy;
+  }
+
+  galleryAdminList.querySelectorAll('[data-event-up]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = Number(btn.dataset.eventUp);
+      saveEventOrder(swapped(galleryEvents, i, i - 1));
+    });
+  });
+  galleryAdminList.querySelectorAll('[data-event-down]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = Number(btn.dataset.eventDown);
+      saveEventOrder(swapped(galleryEvents, i, i + 1));
+    });
+  });
+  galleryAdminList.querySelectorAll('[data-img-left]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const [ei, ii] = btn.dataset.imgLeft.split(':').map(Number);
+      saveImageOrder(swapped(galleryEvents[ei].images, ii, ii - 1));
+    });
+  });
+  galleryAdminList.querySelectorAll('[data-img-right]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const [ei, ii] = btn.dataset.imgRight.split(':').map(Number);
+      saveImageOrder(swapped(galleryEvents[ei].images, ii, ii + 1));
+    });
+  });
+}
+
+// Doda slike na konec obstoječega dogodka; nov dogodek se uvrsti na vrh.
+async function addGalleryImages(eventName, files) {
+  const existing = galleryEvents.find(ev => ev.name === eventName);
+  const eventOrder = existing
+    ? existing.images[0].event_order
+    : Math.min(0, ...galleryEvents.map(ev => ev.images[0].event_order)) - 1;
+  let nextSort = existing ? Math.max(...existing.images.map(img => img.sort_order)) + 1 : 0;
+
+  for (const file of files) {
+    const image_url = await uploadMedia(file, 'gallery');
+    const { error } = await supabaseAdmin.from('gallery').insert({
+      event_name: eventName,
+      image_url,
+      event_order: eventOrder,
+      sort_order: nextSort++
+    });
+    if (error) throw error;
+  }
 }
 
 galleryForm.addEventListener('submit', async (e) => {
@@ -709,15 +819,7 @@ galleryForm.addEventListener('submit', async (e) => {
   galleryStatus.textContent = 'Nalagam …';
 
   try {
-    const files = Array.from(galleryFilesField.files);
-    for (const file of files) {
-      const image_url = await uploadMedia(file, 'gallery');
-      const { error } = await supabaseAdmin.from('gallery').insert({
-        event_name: galleryEventField.value,
-        image_url
-      });
-      if (error) throw error;
-    }
+    await addGalleryImages(galleryEventField.value.trim(), Array.from(galleryFilesField.files));
 
     galleryStatus.textContent = 'Naloženo.';
     galleryForm.reset();
