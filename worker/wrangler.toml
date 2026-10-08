@@ -1,0 +1,13 @@
+name = "baks-files"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "baks-files"
+
+[vars]
+SUPABASE_URL = "https://heltbjqwskckqifznlml.supabase.co"
+SUPABASE_ANON_KEY = "sb_publishable_vEHhXtkpJq8ndMFvXGK0zg_ok4i8Kqn"
+# Po objavi strani nastavi na njen naslov (npr. https://baks.pages.dev), '*' dela povsod
+ALLOWED_ORIGIN = "*"

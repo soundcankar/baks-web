@@ -1,3 +1,5 @@
+const FILES_WORKER_URL = 'https://baks-files.bals-skupine.workers.dev'; // enako kot v script-admin.js
+
 const supabaseClani = supabase.createClient(
   'https://heltbjqwskckqifznlml.supabase.co',
   'sb_publishable_vEHhXtkpJq8ndMFvXGK0zg_ok4i8Kqn'
@@ -80,10 +82,12 @@ async function loadDemos() {
   for (const song of songNames) {
     const container = document.getElementById(`song-${cssSafe(song)}`);
     for (const demo of songs[song]) {
-      const { data: signed, error: signError } = await supabaseClani
-        .storage
-        .from('demos')
-        .createSignedUrl(demo.file_path, 3600);
+      // Demo datoteke so v R2; Worker preveri Supabase sejo (token v URL-ju, ker <audio> ne pošilja glave)
+      const { data: { session } } = await supabaseClani.auth.getSession();
+      const signError = !session;
+      const signed = session
+        ? { signedUrl: `${FILES_WORKER_URL}/demos/${encodeURI(demo.file_path)}?token=${session.access_token}` }
+        : null;
 
       const row = document.createElement('div');
       row.className = 'audio-row';

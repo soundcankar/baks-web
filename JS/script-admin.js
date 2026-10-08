@@ -97,20 +97,35 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // -----------------------------
 // Pomožna funkcija: nalaganje datoteke v Storage
 // -----------------------------
+// Datoteke so v Cloudflare R2 (Supabase Storage je presegel brezplačen promet).
+// NASTAVI po objavi Workerja in vklopu javnega dostopa do R2 bucketa:
+const FILES_WORKER_URL = 'https://baks-files.bals-skupine.workers.dev';
+const R2_PUBLIC_URL = 'https://pub-639091bcb06e41f3980d287948208687.r2.dev';
+
+async function uploadToR2(bucket, file, folder) {
+  const { data: { session } } = await supabaseAdmin.auth.getSession();
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `${folder}/${Date.now()}-${safeName}`;
+  const res = await fetch(`${FILES_WORKER_URL}/upload/${bucket}/${path}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      'Content-Type': file.type || 'application/octet-stream',
+    },
+    body: file,
+  });
+  if (!res.ok) throw new Error('Nalaganje ni uspelo: ' + (await res.text()));
+  return path;
+}
+
 async function uploadMedia(file, folder) {
-  const path = `${folder}/${Date.now()}-${file.name}`;
-  const { error } = await supabaseAdmin.storage.from('media').upload(path, file);
-  if (error) throw error;
-  const { data } = supabaseAdmin.storage.from('media').getPublicUrl(path);
-  return data.publicUrl;
+  const path = await uploadToR2('media', file, folder);
+  return `${R2_PUBLIC_URL}/media/${path}`;
 }
 
 // Zaseben bucket 'demos' - vrne pot v bucketu, ne javnega URL-ja
 async function uploadPrivateFile(file, folder) {
-  const path = `${folder}/${Date.now()}-${file.name}`;
-  const { error } = await supabaseAdmin.storage.from('demos').upload(path, file);
-  if (error) throw error;
-  return path;
+  return uploadToR2('demos', file, folder);
 }
 
 // -----------------------------
