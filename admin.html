@@ -230,6 +230,10 @@
                 <h2>Dodaj / uredi demo</h2>
                 <form id="demo-form" class="admin-form">
                     <input type="hidden" id="demo-id">
+                    <label>Album (neobvezno; izberi obstoječega ali vpiši novega)
+                        <input type="text" id="demo-album" list="demo-album-options">
+                        <datalist id="demo-album-options"></datalist>
+                    </label>
                     <label>Pesem (za grupiranje verzij)
                         <input type="text" id="demo-song" required>
                     </label>

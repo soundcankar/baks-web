@@ -60,30 +60,49 @@ async function loadDemos() {
     return;
   }
 
-  const songs = {};
+  // album -> pesem -> verzije (Map ohrani vrstni red vstavljanja)
+  const albums = new Map();
   (data || []).forEach(d => {
-    if (!songs[d.song]) songs[d.song] = [];
-    songs[d.song].push(d);
+    const albumName = d.album || '';
+    if (!albums.has(albumName)) albums.set(albumName, new Map());
+    const songs = albums.get(albumName);
+    if (!songs.has(d.song)) songs.set(d.song, []);
+    songs.get(d.song).push(d);
   });
 
-  const songNames = Object.keys(songs);
-  if (songNames.length === 0) {
+  if (albums.size === 0) {
     demoList.innerHTML = '<p>Trenutno ni dodanih demo posnetkov.</p>';
     return;
   }
 
-  demoList.innerHTML = songNames.map(song => `
-    <div class="admin-list-item" style="flex-direction:column; align-items:stretch;">
-      <strong style="margin-bottom:12px; font-size:1.1rem;">${song}</strong>
-      <div id="song-${cssSafe(song)}" style="display:flex; flex-direction:column; gap:12px;"></div>
-    </div>
+  // Albumi po abecedi, pesmi brez albuma na koncu
+  const albumNames = [...albums.keys()].sort((a, b) => {
+    if (!a) return 1;
+    if (!b) return -1;
+    return a.localeCompare(b, 'sl');
+  });
+  const hasAlbums = albumNames.some(Boolean);
+
+  // Vsaka pesem dobi svoj kontejner; id-ji so po indeksih (imena lahko vsebujejo poljubne znake)
+  const songContainers = [];
+  demoList.innerHTML = albumNames.map(albumName => `
+    ${hasAlbums ? `<h2 style="margin:28px 0 12px;">${albumName || 'Ostale pesmi'}</h2>` : ''}
+    ${[...albums.get(albumName)].map(([song, versions]) => {
+      const idx = songContainers.push(versions) - 1;
+      return `
+        <div class="admin-list-item" style="flex-direction:column; align-items:stretch;">
+          <strong style="margin-bottom:12px; font-size:1.1rem;">${song}</strong>
+          <div id="song-${idx}" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>`;
+    }).join('')}
   `).join('');
 
-  for (const song of songNames) {
-    const container = document.getElementById(`song-${cssSafe(song)}`);
-    for (const demo of songs[song]) {
-      // Demo datoteke so v R2; Worker preveri Supabase sejo (token v URL-ju, ker <audio> ne pošilja glave)
-      const { data: { session } } = await supabaseClani.auth.getSession();
+  // Demo datoteke so v R2; Worker preveri Supabase sejo (token v URL-ju, ker <audio> ne pošilja glave)
+  const { data: { session } } = await supabaseClani.auth.getSession();
+
+  for (let idx = 0; idx < songContainers.length; idx++) {
+    const container = document.getElementById(`song-${idx}`);
+    for (const demo of songContainers[idx]) {
       const signError = !session;
       const signed = session
         ? { signedUrl: `${FILES_WORKER_URL}/demos/${encodeURI(demo.file_path)}?token=${session.access_token}` }

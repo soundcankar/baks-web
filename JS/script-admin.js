@@ -983,6 +983,8 @@ sponsorsForm.addEventListener('submit', async (e) => {
 // -----------------------------
 const demoForm = document.getElementById('demo-form');
 const demoIdField = document.getElementById('demo-id');
+const demoAlbumField = document.getElementById('demo-album');
+const demoAlbumOptions = document.getElementById('demo-album-options');
 const demoSongField = document.getElementById('demo-song');
 const demoVersionField = document.getElementById('demo-version');
 const demoOpisField = document.getElementById('demo-opis');
@@ -1007,6 +1009,7 @@ async function loadDemoAdminList() {
   const { data, error } = await supabaseAdmin
     .from('demos')
     .select('*')
+    .order('album', { ascending: true, nullsFirst: false })
     .order('song', { ascending: true })
     .order('sort_order', { ascending: true });
 
@@ -1017,11 +1020,14 @@ async function loadDemoAdminList() {
 
   const all = data || [];
 
+  const albumNames = [...new Set(all.map(d => d.album).filter(Boolean))];
+  demoAlbumOptions.innerHTML = albumNames.map(a => `<option value="${a}"></option>`).join('');
+
   demoAdminList.innerHTML = all.map(d => `
     <div class="admin-list-item">
       <div class="item-info">
         <strong>${d.song}</strong>
-        <span>${d.version_label}</span>
+        <span>${d.album ? d.album + ' · ' : ''}${d.version_label}</span>
       </div>
       <div class="item-actions">
         <button data-edit="${d.id}">Uredi</button>
@@ -1035,6 +1041,7 @@ async function loadDemoAdminList() {
       const item = all.find(d => String(d.id) === btn.dataset.edit);
       if (!item) return;
       demoIdField.value = item.id;
+      demoAlbumField.value = item.album || '';
       demoSongField.value = item.song;
       demoVersionField.value = item.version_label;
       demoOpisField.value = item.opis || '';
@@ -1066,8 +1073,10 @@ demoForm.addEventListener('submit', async (e) => {
 
     if (!file_path) throw new Error('Dodaj zvočno datoteko.');
 
+    const album = demoAlbumField.value.trim() || null;
     const payload = {
       song: demoSongField.value,
+      album,
       version_label: demoVersionField.value,
       opis: demoOpisField.value,
       file_path
@@ -1081,6 +1090,10 @@ demoForm.addEventListener('submit', async (e) => {
     }
 
     if (error) throw error;
+
+    // Album velja za pesem: vse verzije iste pesmi gredo v isti album
+    const { error: albumError } = await supabaseAdmin.from('demos').update({ album }).eq('song', payload.song);
+    if (albumError) throw albumError;
 
     demoStatus.textContent = 'Shranjeno.';
     resetDemoForm();
