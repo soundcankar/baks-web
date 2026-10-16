@@ -84,12 +84,22 @@ export default {
       const object = await env.BUCKET.get(key, { range: request.headers, onlyIf: request.headers });
       if (!object) return json(env, 404, { error: 'Ni najdeno' });
 
-      const headers = cors(env, {
+      const headers = new Headers(cors(env, {
         'Accept-Ranges': 'bytes',
         'Cache-Control': 'private, max-age=3600',
-      });
+      }));
       object.writeHttpMetadata(headers);
       headers.set('etag', object.httpEtag);
+      if (!headers.get('Content-Type')) headers.set('Content-Type', 'audio/mpeg');
+
+      // Predpogoj iz glave (If-None-Match ipd.) ni izpolnjen: R2 vrne objekt brez telesa
+      if (!('body' in object)) return new Response(null, { status: 304, headers });
+
+      // ?download=1 -> brskalnik datoteko shrani (atribut "download" ne deluje med različnimi domenami)
+      if (url.searchParams.get('download')) {
+        const name = key.split('/').pop().replace(/^\d+-/, '');
+        headers.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(name)}`);
+      }
 
       if (object.range) {
         const { offset = 0, length = object.size } = object.range;

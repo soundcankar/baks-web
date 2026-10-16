@@ -98,7 +98,10 @@ async function loadDemos() {
         </div>
         ${signError
           ? `<span class="form-error">Napaka pri nalaganju posnetka</span>`
-          : `<audio controls><source src="${signed.signedUrl}" type="audio/mpeg"></audio>`
+          : `<div style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
+               <audio controls preload="metadata"><source src="${signed.signedUrl}" type="audio/mpeg"></audio>
+               <a class="btn" href="${signed.signedUrl}&download=1" download>⬇ Prenesi</a>
+             </div>`
         }
       `;
       container.appendChild(row);
