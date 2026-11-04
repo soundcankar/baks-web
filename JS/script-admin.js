@@ -554,7 +554,8 @@ const settingsForm = document.getElementById('settings-form');
 const settingsTaglineField = document.getElementById('settings-tagline');
 const settingsAboutField = document.getElementById('settings-about');
 const settingsMembersField = document.getElementById('settings-members');
-const settingsPhotoField = document.getElementById('settings-photo');
+const settingsEmailField = document.getElementById('settings-email');
+const settingsPhotoField =document.getElementById('settings-photo');
 const settingsStatus = document.getElementById('settings-status');
 
 let settingsExistingPhotoUrl = null;
@@ -575,6 +576,7 @@ async function loadSettingsForm() {
   settingsTaglineField.value = data.hero_tagline || '';
   settingsAboutField.value = data.about_text || '';
   settingsMembersField.value = Array.isArray(data.members) ? data.members.join('\n') : '';
+  settingsEmailField.value = data.contact_email || '';
   settingsExistingPhotoUrl = data.band_photo_url || null;
 }
 
@@ -600,6 +602,7 @@ settingsForm.addEventListener('submit', async (e) => {
         hero_tagline: settingsTaglineField.value,
         about_text: settingsAboutField.value,
         members,
+        contact_email: settingsEmailField.value.trim() || null,
         band_photo_url
       });
 

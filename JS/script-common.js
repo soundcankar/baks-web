@@ -208,6 +208,12 @@ function renderSettings(settings) {
   if (bandPhoto && settings.band_photo_url) {
     bandPhoto.src = settings.band_photo_url;
   }
+
+  const footerEmail = document.getElementById('footer-email');
+  if (footerEmail && settings.contact_email) {
+    footerEmail.textContent = settings.contact_email;
+    footerEmail.href = 'mailto:' + settings.contact_email;
+  }
 }
 
 async function loadPageBackground(page) {
@@ -434,11 +440,13 @@ async function initCommon() {
   const taglineEl = document.getElementById('hero-tagline');
   const aboutEl = document.getElementById('about-text');
   const membersEl = document.getElementById('members-list');
-  if (taglineEl || aboutEl || membersEl) {
+  const footerEmailEl = document.getElementById('footer-email');
+  if (taglineEl || aboutEl || membersEl || footerEmailEl) {
     try {
       const settings = await loadSettings();
       renderSettings(settings);
     } finally {
+      if (footerEmailEl) footerEmailEl.classList.remove('settings-pending');
       if (taglineEl) taglineEl.classList.remove('settings-pending');
       if (aboutEl) aboutEl.classList.remove('settings-pending');
       if (membersEl) membersEl.classList.remove('settings-pending');
