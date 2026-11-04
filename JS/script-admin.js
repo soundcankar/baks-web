@@ -312,7 +312,7 @@ async function loadPosnetkiList() {
 
   if (videos.length > 0) {
     html += '<h3 style="margin:0 0 10px;">Video</h3>';
-    html += videos.map(p => itemRow(p, false)).join('');
+    html += videos.map((p, index) => itemRow(p, true, index, videos.length)).join('');
   }
 
   const albumNames = Object.keys(albums);
@@ -388,7 +388,7 @@ async function loadPosnetkiList() {
   posnetkiList.querySelectorAll('[data-track-up]').forEach(btn => {
     btn.addEventListener('click', () => {
       const track = all.find(p => String(p.id) === btn.dataset.trackUp);
-      const tracks = albums[track.album];
+      const tracks = track.type === 'video' ? videos : albums[track.album];
       const index = tracks.findIndex(p => String(p.id) === btn.dataset.trackUp);
       if (index > 0) reorderTracks(tracks, index, index - 1);
     });
@@ -397,7 +397,7 @@ async function loadPosnetkiList() {
   posnetkiList.querySelectorAll('[data-track-down]').forEach(btn => {
     btn.addEventListener('click', () => {
       const track = all.find(p => String(p.id) === btn.dataset.trackDown);
-      const tracks = albums[track.album];
+      const tracks = track.type === 'video' ? videos : albums[track.album];
       const index = tracks.findIndex(p => String(p.id) === btn.dataset.trackDown);
       if (index < tracks.length - 1) reorderTracks(tracks, index, index + 1);
     });

@@ -182,8 +182,12 @@ async function loadPosnetki() {
     // -----------------------------
     //  VIDEO – poenoten prikaz
     // -----------------------------
-    data.forEach(posnetek => {
-        if (posnetek.type !== "video") return;
+    // Vrstni red videov (data je že po created_at padajoče, sort je stabilen)
+    const videos = data
+        .filter(p => p.type === "video")
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+    videos.forEach(posnetek => {
 
         // YouTube
         if (posnetek.file_url.includes("youtube.com") || posnetek.file_url.includes("youtu.be")) {
