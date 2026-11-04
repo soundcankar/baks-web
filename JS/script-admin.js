@@ -531,6 +531,7 @@ async function loadAlbumsOrderList() {
       <div class="item-actions">
         <button data-move-up="${a.name}" data-type="${sec.type}" ${index === 0 ? 'disabled' : ''}>&uarr;</button>
         <button data-move-down="${a.name}" data-type="${sec.type}" ${index === sec.albums.length - 1 ? 'disabled' : ''}>&darr;</button>
+        <button data-album-rename="${a.name}" data-type="${sec.type}">Preimenuj</button>
         <button data-album-save="${a.name}">Shrani sliko</button>
         <button data-album-remove="${a.name}" class="danger">Odstrani sliko</button>
       </div>
@@ -567,6 +568,53 @@ async function loadAlbumsOrderList() {
       if (!confirm('Odstranim sliko tega albuma?')) return;
       const { error } = await supabaseAdmin.from('albums').update({ image_url: null }).eq('name', name);
       if (error) alert('Napaka: ' + error.message);
+      loadAlbumsOrderList();
+    });
+  });
+
+  albumsOrderList.querySelectorAll('[data-album-rename]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const type = btn.dataset.type;
+      const oldName = btn.dataset.albumRename;
+      const input = prompt(`Novo ime albuma "${oldName}":`, oldName);
+      const newName = (input || '').trim();
+      if (!newName || newName === oldName) return;
+
+      const exists = albumRows.some(a => a.name === newName);
+      if (exists && !confirm(`Album "${newName}" že obstaja. Združim posnetke v ta album?`)) return;
+
+      try {
+        // 1) Posnetki tega tipa (videi brez albuma so prikazani v "Razno")
+        let q = supabaseAdmin.from('posnetki').update({ album: newName }).eq('type', type);
+        q = (type === 'video' && oldName === 'Razno')
+          ? q.or('album.is.null,album.eq.Razno')
+          : q.eq('album', oldName);
+        const r1 = await q;
+        if (r1.error) throw r1.error;
+
+        // 2) Vnos albuma (slika, vrstni red). Če staro ime uporablja še drugi tip, ga pustimo.
+        const otherType = type === 'audio' ? 'video' : 'audio';
+        const oldRow = albumRows.find(a => a.name === oldName);
+        if (namesByType[otherType].has(oldName)) {
+          if (!exists) {
+            const r2 = await supabaseAdmin.from('albums').insert({
+              name: newName,
+              sort_order: oldRow ? oldRow.sort_order : albumRows.length,
+              image_url: oldRow ? oldRow.image_url : null
+            });
+            if (r2.error) throw r2.error;
+          }
+        } else if (exists) {
+          const r2 = await supabaseAdmin.from('albums').delete().eq('name', oldName);
+          if (r2.error) throw r2.error;
+        } else {
+          const r2 = await supabaseAdmin.from('albums').update({ name: newName }).eq('name', oldName);
+          if (r2.error) throw r2.error;
+        }
+      } catch (err) {
+        alert('Napaka pri preimenovanju: ' + err.message);
+      }
+      loadPosnetkiList();
       loadAlbumsOrderList();
     });
   });
