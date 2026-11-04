@@ -479,20 +479,49 @@ posnetkiForm.addEventListener('submit', async (e) => {
 const albumsOrderList = document.getElementById('albums-order-list');
 
 async function loadAlbumsOrderList() {
-  const { data, error } = await supabaseAdmin
-    .from('albums')
-    .select('*')
-    .order('sort_order', { ascending: true })
-    .order('name', { ascending: true });
+  const [albumsRes, posnetkiRes] = await Promise.all([
+    supabaseAdmin.from('albums').select('*').order('sort_order', { ascending: true }).order('name', { ascending: true }),
+    supabaseAdmin.from('posnetki').select('type, album')
+  ]);
 
-  if (error) {
-    albumsOrderList.innerHTML = `<p class="form-error">Napaka: ${error.message}</p>`;
+  if (albumsRes.error || posnetkiRes.error) {
+    const msg = (albumsRes.error || posnetkiRes.error).message;
+    albumsOrderList.innerHTML = `<p class="form-error">Napaka: ${msg}</p>`;
     return;
   }
 
-  const albums = data || [];
+  let albumRows = albumsRes.data || [];
+  const posnetkiRows = posnetkiRes.data || [];
 
-  albumsOrderList.innerHTML = albums.map((a, index) => `
+  // Katere albume uporabljajo avdio oz. video posnetki (video brez albuma = "Razno")
+  const namesByType = { audio: new Set(), video: new Set() };
+  posnetkiRows.forEach(p => {
+    const name = (p.album || '').trim() || (p.type === 'video' ? 'Razno' : '');
+    if (name) namesByType[p.type]?.add(name);
+  });
+
+  // Vnose albumov, ki jih še ni v tabeli albums (npr. "Razno" ali video albumi), ustvarimo
+  const known = new Set(albumRows.map(a => a.name));
+  const missing = [...new Set([...namesByType.audio, ...namesByType.video])].filter(n => !known.has(n));
+  if (missing.length > 0) {
+    const start = albumRows.length;
+    const { error } = await supabaseAdmin
+      .from('albums')
+      .upsert(missing.map((name, i) => ({ name, sort_order: start + i })), { onConflict: 'name', ignoreDuplicates: true });
+    if (!error) {
+      const reload = await supabaseAdmin.from('albums').select('*').order('sort_order', { ascending: true }).order('name', { ascending: true });
+      if (!reload.error) albumRows = reload.data || [];
+    }
+  }
+
+  const sections = [
+    { type: 'audio', title: 'Avdio albumi' },
+    { type: 'video', title: 'Video albumi' }
+  ].map(sec => ({ ...sec, albums: albumRows.filter(a => namesByType[sec.type].has(a.name)) }));
+
+  const sectionHtml = sec => `
+    <h3 style="margin:20px 0 0; color:var(--accent);">${sec.title}</h3>
+    ${sec.albums.map((a, index) => `
     <div class="admin-list-item">
       <div class="item-info">
         <strong>${a.name}</strong>
@@ -500,13 +529,15 @@ async function loadAlbumsOrderList() {
         <input type="file" accept="image/*" data-album-file="${a.name}" style="margin-top:8px;">
       </div>
       <div class="item-actions">
-        <button data-move-up="${a.name}" ${index === 0 ? 'disabled' : ''}>&uarr;</button>
-        <button data-move-down="${a.name}" ${index === albums.length - 1 ? 'disabled' : ''}>&darr;</button>
+        <button data-move-up="${a.name}" data-type="${sec.type}" ${index === 0 ? 'disabled' : ''}>&uarr;</button>
+        <button data-move-down="${a.name}" data-type="${sec.type}" ${index === sec.albums.length - 1 ? 'disabled' : ''}>&darr;</button>
         <button data-album-save="${a.name}">Shrani sliko</button>
         <button data-album-remove="${a.name}" class="danger">Odstrani sliko</button>
       </div>
-    </div>
-  `).join('') || '<p>Ni še albumov (dodaj audio posnetek z imenom albuma).</p>';
+    </div>`).join('') || '<p>Ni še albumov.</p>'}
+  `;
+
+  albumsOrderList.innerHTML = sections.map(sectionHtml).join('');
 
   albumsOrderList.querySelectorAll('[data-album-save]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -540,10 +571,10 @@ async function loadAlbumsOrderList() {
     });
   });
 
-  // Ponovno oštevilči sort_order vseh albumov glede na trenutni vrstni red v seznamu
+  // Ponovno oštevilči sort_order albumov te skupine (avdio ali video) glede na trenutni vrstni red
   // (namesto zamenjave surovih vrednosti, ki so lahko vse enake in bi zamenjava bila brez učinka).
-  async function reorderAlbums(indexA, indexB) {
-    const reordered = [...albums];
+  async function reorderAlbums(type, indexA, indexB) {
+    const reordered = [...sections.find(sec => sec.type === type).albums];
     [reordered[indexA], reordered[indexB]] = [reordered[indexB], reordered[indexA]];
 
     const results = await Promise.all(
@@ -556,15 +587,17 @@ async function loadAlbumsOrderList() {
 
   albumsOrderList.querySelectorAll('[data-move-up]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const index = albums.findIndex(a => a.name === btn.dataset.moveUp);
-      if (index > 0) reorderAlbums(index, index - 1);
+      const list = sections.find(sec => sec.type === btn.dataset.type).albums;
+      const index = list.findIndex(a => a.name === btn.dataset.moveUp);
+      if (index > 0) reorderAlbums(btn.dataset.type, index, index - 1);
     });
   });
 
   albumsOrderList.querySelectorAll('[data-move-down]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const index = albums.findIndex(a => a.name === btn.dataset.moveDown);
-      if (index < albums.length - 1) reorderAlbums(index, index + 1);
+      const list = sections.find(sec => sec.type === btn.dataset.type).albums;
+      const index = list.findIndex(a => a.name === btn.dataset.moveDown);
+      if (index < list.length - 1) reorderAlbums(btn.dataset.type, index, index + 1);
     });
   });
 }
