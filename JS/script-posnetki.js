@@ -163,9 +163,16 @@ async function loadPosnetki() {
 
         block.innerHTML += `
             <article>
-                <h2>${albumName}</h2>
-                ${albumImages[albumName] ? `<img src="${albumImages[albumName]}" alt="${albumName}" class="album-cover">` : ''}
-                ${tracksHtml}
+                <details class="album-acc">
+                    <summary>
+                        <span class="album-acc-name">${albumName}</span>
+                        <span class="album-acc-count">${albums[albumName].length}</span>
+                    </summary>
+                    <div class="album-acc-body">
+                        ${albumImages[albumName] ? `<img src="${albumImages[albumName]}" alt="${albumName}" class="album-cover">` : ''}
+                        ${tracksHtml}
+                    </div>
+                </details>
             </article>
         `;
     }
@@ -205,7 +212,7 @@ async function loadPosnetki() {
                     <p>${posnetek.opis}</p>
                     <div class="video-wrapper">
                         <iframe
-                            src="${embedUrl}"
+                            data-src="${embedUrl}"
                             frameborder="0"
                             allowfullscreen>
                         </iframe>
@@ -220,7 +227,7 @@ async function loadPosnetki() {
                 <h3>${posnetek.naslov}</h3>
                 <p>${posnetek.opis}</p>
                 <div class="video-wrapper">
-                    <video controls>
+                    <video controls preload="none">
                         <source src="${posnetek.file_url}" type="video/mp4">
                     </video>
                 </div>
@@ -232,13 +239,70 @@ async function loadPosnetki() {
         const videos = videoAlbums[albumName]
             .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
         videoDiv.innerHTML += `
-            <div class="video-album">
-                <h3 class="video-album-title">${albumName}</h3>
-                ${videos.map(videoHtml).join('')}
-            </div>
+            <details class="album-acc video-album">
+                <summary>
+                    <span class="album-acc-name">${albumName}</span>
+                    <span class="album-acc-count">${videos.length}</span>
+                </summary>
+                <div class="album-acc-body">
+                    ${videos.map(videoHtml).join('')}
+                </div>
+            </details>
         `;
     });
+
+    initAccordions();
 }
+
+// Naenkrat je odprt samo en album v posamezni skupini; YouTube se naloži šele ob odprtju.
+function initAccordions() {
+    document.querySelectorAll('#panel-audio, #panel-video').forEach(panel => {
+        const items = panel.querySelectorAll('details.album-acc');
+        items.forEach(d => {
+            d.addEventListener('toggle', () => {
+                if (!d.open) return;
+                items.forEach(o => { if (o !== d) o.open = false; });
+                d.querySelectorAll('iframe[data-src]').forEach(f => {
+                    f.src = f.dataset.src;
+                    f.removeAttribute('data-src');
+                });
+            });
+        });
+    });
+}
+
+// Zavihka Avdio / Video (zapomni si izbiro, deluje tudi #video v povezavi)
+function initMediaTabs() {
+    const tabs = document.querySelectorAll('.media-tab');
+    if (tabs.length === 0) return;
+
+    function show(name) {
+        tabs.forEach(t => {
+            const on = t.dataset.tab === name;
+            t.classList.toggle('active', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        document.getElementById('panel-audio').hidden = name !== 'audio';
+        document.getElementById('panel-video').hidden = name !== 'video';
+        try { localStorage.setItem('posnetkiTab', name); } catch (e) {}
+    }
+
+    tabs.forEach(t => t.addEventListener('click', () => {
+        show(t.dataset.tab);
+        history.replaceState(null, '', '#' + t.dataset.tab);
+    }));
+
+    let initial = 'audio';
+    const hash = location.hash.replace('#', '');
+    if (hash === 'video' || hash === 'audio') {
+        initial = hash;
+    } else {
+        try { initial = localStorage.getItem('posnetkiTab') === 'video' ? 'video' : 'audio'; } catch (e) {}
+    }
+    show(initial);
+}
+
+initMediaTabs();
 
 // Zaženi samo na posnetki.html
 if (document.getElementById("audio-posnetki")) {

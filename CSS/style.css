@@ -799,3 +799,90 @@ article p strong { color: var(--text); }
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
 }
+
+/* Zavihka Avdio / Video */
+.media-tabs {
+  display: flex;
+  gap: 8px;
+  max-width: 900px;
+  margin: 0 auto 20px;
+}
+
+.media-tab {
+  flex: 1;
+  padding: 14px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+.media-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.media-panel { max-width: 900px; margin: 0 auto; }
+.media-panel[hidden] { display: none; }
+#video-posnetki { padding: 0 20px; }
+
+/* Zložljivi albumi */
+.album-acc {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.video-album { margin-bottom: 12px; }
+
+.album-acc > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  min-height: 48px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.album-acc > summary::-webkit-details-marker { display: none; }
+
+.album-acc > summary::after {
+  content: '+';
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.album-acc[open] > summary::after { content: '\2212'; }
+
+.album-acc-name {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  letter-spacing: 1px;
+  color: var(--accent);
+}
+
+.album-acc-count {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.album-acc-count::before { content: '('; }
+.album-acc-count::after { content: ')'; }
+
+.album-acc-body { padding: 0 20px 20px; }
+.album-acc[open] > summary { border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+
+.album-block article { padding: 0; }
+.album-block { gap: 12px; }
+.album-acc-body article + article { margin-top: 20px; }
+.album-acc-body .audio-row + .audio-row { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; }

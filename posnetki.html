@@ -68,15 +68,18 @@
     <!-- GLAVNI DEL -->
     <section style="padding-top:30px;">
         <div class="container">
-            <div class="section-heading" style="text-align:left; margin-bottom:20px;">
-                <h2>Albumi</h2>
+            <div class="media-tabs" role="tablist">
+                <button type="button" class="media-tab active" id="tab-btn-audio" role="tab" data-tab="audio" aria-selected="true">Avdio</button>
+                <button type="button" class="media-tab" id="tab-btn-video" role="tab" data-tab="video" aria-selected="false">Video</button>
             </div>
-            <div id="audio-posnetki"></div>
 
-            <div class="section-heading" style="text-align:left; margin-top:40px; margin-bottom:20px;">
-                <h2>Video</h2>
+            <div id="panel-audio" class="media-panel" role="tabpanel">
+                <div id="audio-posnetki"></div>
             </div>
-            <div id="video-posnetki"></div>
+
+            <div id="panel-video" class="media-panel" role="tabpanel" hidden>
+                <div id="video-posnetki"></div>
+            </div>
         </div>
     </section>
 
