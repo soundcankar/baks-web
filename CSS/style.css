@@ -787,3 +787,15 @@ article p strong { color: var(--text); }
   nav ul { gap: 16px; }
   body { padding: 0; }
 }
+
+.video-album { margin-bottom: 40px; }
+
+.video-album-title {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  letter-spacing: 1px;
+  color: var(--accent);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}

@@ -253,7 +253,7 @@ let posnetkiExistingFileUrl = null;
 
 function updatePosnetkiFieldVisibility() {
   const isAudio = posnetkiTypeField.value === 'audio';
-  posnetkiAlbumWrap.style.display = isAudio ? '' : 'none';
+  posnetkiAlbumWrap.style.display = '';
   posnetkiYoutubeWrap.style.display = isAudio ? 'none' : '';
 }
 
@@ -284,12 +284,21 @@ async function loadPosnetkiList() {
   }
 
   const all = data || [];
-  const videos = all.filter(p => p.type === 'video');
-  const albums = {};
-  all.filter(p => p.type === 'audio').forEach(p => {
-    if (!albums[p.album]) albums[p.album] = [];
-    albums[p.album].push(p);
-  });
+  // Skupine: avdio albumi in video albumi (videi brez albuma gredo v "Razno")
+  const VIDEO_NO_ALBUM = 'Razno';
+  const groupsOf = (type) => {
+    const map = {};
+    all.filter(p => p.type === type).forEach(p => {
+      const name = (p.album || '').trim() || (type === 'video' ? VIDEO_NO_ALBUM : '');
+      if (!map[name]) map[name] = [];
+      map[name].push(p);
+    });
+    return Object.keys(map).map(name => ({ type, name, tracks: map[name] }));
+  };
+  const audioGroups = groupsOf('audio');
+  const videoGroups = groupsOf('video');
+  const groups = [...audioGroups, ...videoGroups];
+  const groupOf = (p) => groups.find(g => g.type === p.type && g.tracks.some(t => t.id === p.id));
 
   const itemRow = (p, showReorder, index, total) => `
     <div class="admin-list-item">
@@ -310,35 +319,48 @@ async function loadPosnetkiList() {
 
   let html = '';
 
-  if (videos.length > 0) {
-    html += '<h3 style="margin:0 0 10px;">Video</h3>';
-    html += videos.map((p, index) => itemRow(p, true, index, videos.length)).join('');
-  }
-
-  const albumNames = Object.keys(albums);
-  albumNames.forEach((albumName, ai) => {
-    const tracks = albums[albumName];
-    html += `
+  const renderGroups = (list, title) => {
+    if (list.length === 0) return;
+    html += `<h3 style="margin:30px 0 0; color:var(--accent);">${title}</h3>`;
+    list.forEach(g => {
+      html += `
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin:24px 0 10px;">
-        <h3 style="margin:0;">${albumName}</h3>
-        <button data-album-delete="${ai}" class="danger">Odstrani album</button>
+        <h3 style="margin:0;">${g.name}</h3>
+        <button data-album-delete="${groups.indexOf(g)}" class="danger">Odstrani album</button>
       </div>`;
-    html += tracks.map((p, index) => itemRow(p, true, index, tracks.length)).join('');
-  });
+      html += g.tracks.map((p, index) => itemRow(p, true, index, g.tracks.length)).join('');
+    });
+  };
+  renderGroups(audioGroups, 'Avdio');
+  renderGroups(videoGroups, 'Video');
 
   posnetkiList.innerHTML = html || '<p>Ni še dodanih posnetkov.</p>';
 
   // Odstrani celoten album (vse pesmi + vnos albuma s sliko in vrstnim redom)
   posnetkiList.querySelectorAll('[data-album-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const albumName = albumNames[btn.dataset.albumDelete];
-      const count = albums[albumName].length;
+      const g = groups[btn.dataset.albumDelete];
+      const albumName = g.name;
+      const count = g.tracks.length;
       if (!confirm(`Odstranim album "${albumName}" in vseh ${count} posnetkov v njem?`)) return;
 
-      const tracksRes = await supabaseAdmin.from('posnetki').delete().eq('type', 'audio').eq('album', albumName);
+      // Videi brez albuma (prikazani v "Razno") imajo album = null
+      let delQuery = supabaseAdmin.from('posnetki').delete().eq('type', g.type);
+      if (g.type === 'video' && albumName === VIDEO_NO_ALBUM) {
+        delQuery = delQuery.or(`album.is.null,album.eq.${VIDEO_NO_ALBUM}`);
+      } else {
+        delQuery = delQuery.eq('album', albumName);
+      }
+      const tracksRes = await delQuery;
       if (tracksRes.error) { alert('Napaka pri brisanju: ' + tracksRes.error.message); return; }
-      const albumRes = await supabaseAdmin.from('albums').delete().eq('name', albumName);
-      if (albumRes.error) alert('Napaka pri brisanju albuma: ' + albumRes.error.message);
+
+      // Vnos albuma (slika, vrstni red) izbrišemo samo, če ga ne uporablja še drugi tip posnetkov
+      const { count: stillUsed } = await supabaseAdmin
+        .from('posnetki').select('id', { count: 'exact', head: true }).eq('album', albumName);
+      if (!stillUsed) {
+        const albumRes = await supabaseAdmin.from('albums').delete().eq('name', albumName);
+        if (albumRes.error) alert('Napaka pri brisanju albuma: ' + albumRes.error.message);
+      }
 
       loadPosnetkiList();
       loadAlbumsOrderList();
@@ -388,7 +410,7 @@ async function loadPosnetkiList() {
   posnetkiList.querySelectorAll('[data-track-up]').forEach(btn => {
     btn.addEventListener('click', () => {
       const track = all.find(p => String(p.id) === btn.dataset.trackUp);
-      const tracks = track.type === 'video' ? videos : albums[track.album];
+      const tracks = groupOf(track).tracks;
       const index = tracks.findIndex(p => String(p.id) === btn.dataset.trackUp);
       if (index > 0) reorderTracks(tracks, index, index - 1);
     });
@@ -397,7 +419,7 @@ async function loadPosnetkiList() {
   posnetkiList.querySelectorAll('[data-track-down]').forEach(btn => {
     btn.addEventListener('click', () => {
       const track = all.find(p => String(p.id) === btn.dataset.trackDown);
-      const tracks = track.type === 'video' ? videos : albums[track.album];
+      const tracks = groupOf(track).tracks;
       const index = tracks.findIndex(p => String(p.id) === btn.dataset.trackDown);
       if (index < tracks.length - 1) reorderTracks(tracks, index, index + 1);
     });
@@ -421,7 +443,7 @@ posnetkiForm.addEventListener('submit', async (e) => {
 
     const payload = {
       type: posnetkiTypeField.value,
-      album: posnetkiTypeField.value === 'audio' ? posnetkiAlbumField.value : null,
+      album: posnetkiAlbumField.value.trim() || null,
       naslov: posnetkiNaslovField.value,
       opis: posnetkiOpisField.value,
       file_url
@@ -436,7 +458,7 @@ posnetkiForm.addEventListener('submit', async (e) => {
 
     if (error) throw error;
 
-    if (payload.type === 'audio' && payload.album) {
+    if (payload.album) {
       await supabaseAdmin
         .from('albums')
         .upsert({ name: payload.album }, { onConflict: 'name', ignoreDuplicates: true });

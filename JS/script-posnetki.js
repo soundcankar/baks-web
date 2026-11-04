@@ -182,18 +182,24 @@ async function loadPosnetki() {
     // -----------------------------
     //  VIDEO – poenoten prikaz
     // -----------------------------
-    // Vrstni red videov (data je že po created_at padajoče, sort je stabilen)
-    const videos = data
-        .filter(p => p.type === "video")
-        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    // Videi po albumih (kategorijah). Videi brez albuma gredo v "Razno".
+    const videoAlbums = {};
+    data.filter(p => p.type === "video").forEach(posnetek => {
+        const name = (posnetek.album || '').trim() || 'Razno';
+        if (!videoAlbums[name]) videoAlbums[name] = [];
+        videoAlbums[name].push(posnetek);
+    });
 
-    videos.forEach(posnetek => {
+    // Vrstni red albumov kot v adminu; znotraj albuma po sort_order
+    // (data je že po created_at padajoče, sort je stabilen).
+    const orderedVideoAlbums = Object.keys(videoAlbums).sort((a, b) =>
+        (albumOrder[a] ?? 999999) - (albumOrder[b] ?? 999999));
 
+    const videoHtml = posnetek => {
         // YouTube
         if (posnetek.file_url.includes("youtube.com") || posnetek.file_url.includes("youtu.be")) {
             const embedUrl = toYouTubeEmbed(posnetek.file_url);
-
-            videoDiv.innerHTML += `
+            return `
                 <article>
                     <h3>${posnetek.naslov}</h3>
                     <p>${posnetek.opis}</p>
@@ -208,20 +214,29 @@ async function loadPosnetki() {
             `;
         }
 
-        // Supabase video datoteka
-        else {
-            videoDiv.innerHTML += `
-                <article>
-                    <h3>${posnetek.naslov}</h3>
-                    <p>${posnetek.opis}</p>
-                    <div class="video-wrapper">
-                        <video controls>
-                            <source src="${posnetek.file_url}" type="video/mp4">
-                        </video>
-                    </div>
-                </article>
-            `;
-        }
+        // Video datoteka
+        return `
+            <article>
+                <h3>${posnetek.naslov}</h3>
+                <p>${posnetek.opis}</p>
+                <div class="video-wrapper">
+                    <video controls>
+                        <source src="${posnetek.file_url}" type="video/mp4">
+                    </video>
+                </div>
+            </article>
+        `;
+    };
+
+    orderedVideoAlbums.forEach(albumName => {
+        const videos = videoAlbums[albumName]
+            .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+        videoDiv.innerHTML += `
+            <div class="video-album">
+                <h3 class="video-album-title">${albumName}</h3>
+                ${videos.map(videoHtml).join('')}
+            </div>
+        `;
     });
 }
 
