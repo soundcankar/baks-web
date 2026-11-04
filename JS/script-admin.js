@@ -527,11 +527,13 @@ async function loadAlbumsOrderList() {
         <strong>${a.name}</strong>
         <span>${a.image_url ? 'Slika nastavljena' : 'Ni slike'}</span>
         <input type="file" accept="image/*" data-album-file="${a.name}" style="margin-top:8px;">
+        <input type="text" maxlength="40" placeholder="Podnaslov (npr. studijski album, live)" value="${(a.subtitle || '').replace(/"/g, '&quot;')}" data-album-subtitle="${a.name}" style="margin-top:8px;">
       </div>
       <div class="item-actions">
         <button data-move-up="${a.name}" data-type="${sec.type}" ${index === 0 ? 'disabled' : ''}>&uarr;</button>
         <button data-move-down="${a.name}" data-type="${sec.type}" ${index === sec.albums.length - 1 ? 'disabled' : ''}>&darr;</button>
         <button data-album-rename="${a.name}" data-type="${sec.type}">Preimenuj</button>
+        <button data-album-subtitle-save="${a.name}">Shrani podnaslov</button>
         <button data-album-save="${a.name}">Shrani sliko</button>
         <button data-album-remove="${a.name}" class="danger">Odstrani sliko</button>
       </div>
@@ -559,6 +561,17 @@ async function loadAlbumsOrderList() {
       } catch (err) {
         alert('Napaka: ' + err.message);
       }
+    });
+  });
+
+  albumsOrderList.querySelectorAll('[data-album-subtitle-save]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const name = btn.dataset.albumSubtitleSave;
+      const input = albumsOrderList.querySelector(`[data-album-subtitle="${name}"]`);
+      const subtitle = input.value.trim() || null;
+      const { error } = await supabaseAdmin.from('albums').update({ subtitle }).eq('name', name);
+      if (error) { alert('Napaka: ' + error.message); return; }
+      loadAlbumsOrderList();
     });
   });
 

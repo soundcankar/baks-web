@@ -112,9 +112,11 @@ async function loadPosnetki() {
 
     const albumOrder = {};
     const albumImages = {};
+    const albumSubtitles = {};
     (albumOrderData || []).forEach(a => {
         albumOrder[a.name] = a.sort_order;
         albumImages[a.name] = a.image_url;
+        albumSubtitles[a.name] = a.subtitle;
     });
 
     const audioDiv = document.getElementById("audio-posnetki");
@@ -165,7 +167,10 @@ async function loadPosnetki() {
             <article>
                 <details class="album-acc">
                     <summary>
-                        <span class="album-acc-name">${albumName}</span>
+                        <span class="album-acc-title">
+                            <span class="album-acc-name">${albumName}</span>
+                            ${albumSubtitles[albumName] ? `<small class="album-acc-sub">${albumSubtitles[albumName]}</small>` : ''}
+                        </span>
                         <span class="album-acc-count">${albums[albumName].length}</span>
                     </summary>
                     <div class="album-acc-body">

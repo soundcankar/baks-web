@@ -886,3 +886,12 @@ article p strong { color: var(--text); }
 .album-block { gap: 12px; }
 .album-acc-body article + article { margin-top: 20px; }
 .album-acc-body .audio-row + .audio-row { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; }
+
+.album-acc-title { display: flex; flex-direction: column; gap: 2px; }
+
+.album-acc-sub {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
